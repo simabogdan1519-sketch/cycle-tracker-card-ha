@@ -1,0 +1,564 @@
+// cycle-tracker-card.js v3
+// Lovelace Custom Card – Cycle Tracker
+// Paleta lunară · Calendar 100% din senzori HA · Wilcox et al. BMJ 2000
+
+const HIST_KEY = 'cycle_tracker_history_v1';
+function loadHistory() { try { return JSON.parse(localStorage.getItem(HIST_KEY) || '[]'); } catch { return []; } }
+function saveHistory(h) { try { localStorage.setItem(HIST_KEY, JSON.stringify(h)); } catch {} }
+
+function smartLen(history, haLen) {
+  if (history.length < 2) return haLen || 28;
+  const s = [...history].sort((a, b) => new Date(a) - new Date(b));
+  const lens = [];
+  for (let i = 1; i < s.length; i++) {
+    const d = Math.round((new Date(s[i]) - new Date(s[i-1])) / 86400000);
+    if (d >= 15 && d <= 50) lens.push(d);
+  }
+  return lens.length ? Math.round(lens.reduce((a,b)=>a+b) / lens.length) : haLen || 28;
+}
+
+function isIrregular(h) {
+  if (h.length < 3) return false;
+  const s = [...h].sort((a,b) => new Date(a)-new Date(b));
+  const lens = [];
+  for (let i = 1; i < s.length; i++) {
+    const d = Math.round((new Date(s[i])-new Date(s[i-1]))/86400000);
+    if (d >= 15 && d <= 50) lens.push(d);
+  }
+  if (lens.length < 2) return false;
+  const avg = lens.reduce((a,b)=>a+b)/lens.length;
+  return Math.sqrt(lens.reduce((a,b)=>a+Math.pow(b-avg,2)/lens.length,0)) > 4;
+}
+
+function trendDir(h) {
+  if (h.length < 4) return null;
+  const s = [...h].sort((a,b)=>new Date(a)-new Date(b));
+  const lens = [];
+  for (let i = 1; i < s.length; i++) {
+    const d = Math.round((new Date(s[i])-new Date(s[i-1]))/86400000);
+    if (d >= 15 && d <= 50) lens.push(d);
+  }
+  if (lens.length < 3) return null;
+  const hh = Math.floor(lens.length/2);
+  const a1 = lens.slice(0,hh).reduce((a,b)=>a+b)/hh;
+  const a2 = lens.slice(-hh).reduce((a,b)=>a+b)/hh;
+  if (a2-a1 > 2) return 'longer';
+  if (a1-a2 > 2) return 'shorter';
+  return 'stable';
+}
+
+const FERT_PCT = { maxim:98, foarte_inalt:80, inalt:55, moderat:25, scazut:5 };
+const FERT_LBL = { maxim:'Maxim', foarte_inalt:'Foarte înalt', inalt:'Înalt', moderat:'Moderat', scazut:'Scăzut' };
+
+const PHASES = {
+  menstruatie: {
+    name:'Menstruație 🌹',
+    bg:'linear-gradient(135deg,rgba(232,96,122,0.18),rgba(155,77,110,0.10))',
+    br:'rgba(232,96,122,0.26)',
+    desc:'Corpul se regenerează. Odihnă, căldură și hidratare sunt esențiale.',
+    recs:[
+      {i:'🛁',t:'<strong>Odihnă & căldură:</strong> Pernă termică, ceai de ghimbir sau mușețel.'},
+      {i:'🥗',t:'<strong>Fier:</strong> Spanac, linte, carne slabă pentru a compensa pierderile.'},
+      {i:'🧘',t:'<strong>Mișcare blândă:</strong> Yoga yin sau stretching. Evită HIIT.'},
+      {i:'💊',t:'<strong>Magneziu + omega-3:</strong> Reduc crampele și inflamația.'},
+    ],
+  },
+  foliculara: {
+    name:'Foliculară 🌱',
+    bg:'linear-gradient(135deg,rgba(196,168,224,0.14),rgba(91,200,184,0.07))',
+    br:'rgba(196,168,224,0.22)',
+    desc:'FSH crește, folicul se maturizează. Estrogenul aduce energie în creștere.',
+    recs:[
+      {i:'🏃',t:'<strong>Energie crescută:</strong> Antrenamente de forță sau cardio.'},
+      {i:'🥦',t:'<strong>Legume crucifere:</strong> Broccoli, varză kale susțin metabolizarea estrogenului.'},
+      {i:'🎯',t:'<strong>Productivitate:</strong> Creierul e mai creativ – ideal pentru proiecte noi.'},
+      {i:'🌿',t:'<strong>Vitamina D + zinc:</strong> Susțin maturarea foliculilor.'},
+    ],
+  },
+  ovulatie: {
+    name:'Fereastră Fertilă ✨',
+    bg:'linear-gradient(135deg,rgba(77,200,240,0.14),rgba(107,143,232,0.08))',
+    br:'rgba(77,200,240,0.28)',
+    desc:'Vârf LH (ziua -1), eliberare ovul (ziua 0). Fertilitate maximă 2 zile.',
+    recs:[
+      {i:'🥚',t:'<strong>Fertilitate maximă:</strong> Ziua de vârf LH + ziua ovulației: ~31-33% șanse/zi.'},
+      {i:'🍓',t:'<strong>Antioxidanți:</strong> Fructe de pădure, roșii, nuci susțin calitatea ovulului.'},
+      {i:'💪',t:'<strong>Performanță fizică maximă:</strong> HIIT, dans, sporturi de echipă.'},
+      {i:'💬',t:'<strong>Social:</strong> Prezentări, negocieri – ești la cel mai bun al tău.'},
+    ],
+  },
+  luteala: {
+    name:'Luteală 🍂',
+    bg:'linear-gradient(135deg,rgba(196,98,45,0.18),rgba(155,77,110,0.08))',
+    br:'rgba(196,98,45,0.30)',
+    desc:'Corpul galben produce progesteron. Fix ~14 zile indiferent de lungimea ciclului.',
+    recs:[
+      {i:'🍫',t:'<strong>Pofte & PMS:</strong> Ciocolată neagră >70%, nuci, magneziu (300mg/zi).'},
+      {i:'🌙',t:'<strong>Somn prioritar:</strong> Temperatura bazală crește ușor după ovulație.'},
+      {i:'🧴',t:'<strong>Piele sensibilă:</strong> Hidratare intensă, evită produse agresive.'},
+      {i:'📓',t:'<strong>Emoții:</strong> Jurnal, meditație — progesteronul poate da iritabilitate.'},
+    ],
+  },
+};
+
+const MS = ['Ian','Feb','Mar','Apr','Mai','Iun','Iul','Aug','Sep','Oct','Nov','Dec'];
+const ML = ['Ianuarie','Februarie','Martie','Aprilie','Mai','Iunie','Iulie','August','Septembrie','Octombrie','Noiembrie','Decembrie'];
+function fmtDate(d) { return (!d||isNaN(d)) ? '—' : `${d.getDate()} ${MS[d.getMonth()]}`; }
+function fmtDateL(d) { return (!d||isNaN(d)) ? '—' : `${d.getDate()} ${ML[d.getMonth()]} ${d.getFullYear()}`; }
+
+class CycleTrackerCard extends HTMLElement {
+  constructor() {
+    super();
+    this.attachShadow({ mode: 'open' });
+    this._hass = null;
+    this._entryId = null;
+    this._prefix = null;
+    this._histOpen = false;
+    this._inpOpen = false;
+    this._lastSensors = null;
+  }
+
+  setConfig(config) { this._config = config || {}; }
+
+  set hass(hass) {
+    this._hass = hass;
+    if (!this.shadowRoot.innerHTML) this._build();
+    this._updateFromHass();
+  }
+
+  getCardSize() { return 14; }
+
+  _build() {
+    this.shadowRoot.innerHTML = `
+      <style>
+        @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;1,400&family=Nunito:wght@300;400;500;600;700&display=swap');
+        *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+        :host{display:block;font-family:'Nunito',sans-serif}
+
+        .card{background:linear-gradient(170deg,#1c0e20 0%,#0f0b16 55%,#16091d 100%);border-radius:28px;border:1px solid rgba(232,96,122,0.13);overflow:hidden;color:#fff;position:relative;box-shadow:0 0 0 1px rgba(255,255,255,0.025) inset}
+        .g1,.g2{position:absolute;border-radius:50%;pointer-events:none}
+        .g1{width:320px;height:320px;top:-90px;right:-70px;background:radial-gradient(circle,rgba(232,96,122,0.09) 0%,transparent 70%)}
+        .g2{width:260px;height:260px;bottom:-80px;left:-70px;background:radial-gradient(circle,rgba(91,200,184,0.06) 0%,transparent 70%)}
+
+        .sbar{display:flex;align-items:center;justify-content:space-between;padding:16px 22px 0;position:relative;z-index:2}
+        .sbar-l{display:flex;align-items:center;gap:7px}
+        .dot{width:6px;height:6px;border-radius:50%;background:#5BC8B8;box-shadow:0 0 9px #5BC8B8;animation:pulse 2.5s ease-in-out infinite}
+        .dot.err{background:#E8607A;box-shadow:0 0 9px #E8607A;animation:none}
+        @keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
+        .stxt{font-size:10px;color:rgba(255,255,255,0.28)}
+        .spill{display:flex;align-items:center;gap:4px;background:rgba(91,200,184,0.09);border:1px solid rgba(91,200,184,0.18);border-radius:99px;padding:3px 10px;font-size:9px;color:#5BC8B8}
+
+        .topbar{padding:10px 22px 0;position:relative;z-index:2}
+        .brand{font-family:'Playfair Display',serif;font-size:20px}
+        .brand em{color:#E8607A;font-style:italic}
+        .sub{font-size:10px;color:rgba(255,255,255,0.22);letter-spacing:.7px;text-transform:uppercase;margin-top:2px}
+
+        .ph{margin:14px 16px 0;border-radius:22px;padding:18px 20px;position:relative;z-index:2;transition:background .6s,border-color .6s;border:1px solid transparent}
+        .ph-tag{font-size:9px;letter-spacing:1.5px;text-transform:uppercase;color:rgba(255,255,255,0.32);margin-bottom:5px}
+        .ph-name{font-family:'Playfair Display',serif;font-size:27px;line-height:1.05;color:#fff}
+        .ph-desc{font-size:12px;color:rgba(255,255,255,0.48);line-height:1.65;margin-top:7px;max-width:215px}
+        .day-orb{position:absolute;top:16px;right:16px;width:56px;height:56px;border-radius:50%;background:rgba(0,0,0,0.30);border:1px solid rgba(255,255,255,0.09);display:flex;flex-direction:column;align-items:center;justify-content:center}
+        .dn{font-family:'Playfair Display',serif;font-size:22px;line-height:1;color:#fff}
+        .dl{font-size:8px;color:rgba(255,255,255,0.26);text-transform:uppercase;letter-spacing:.6px}
+
+        .az{padding:9px 16px 0;position:relative;z-index:2}
+        .ab{display:flex;align-items:center;gap:10px;border-radius:13px;padding:10px 14px;font-size:11.5px;line-height:1.5}
+        .ab.h{display:none}
+        .ab.warn{background:rgba(232,96,122,0.09);border:1px solid rgba(232,96,122,0.20);color:rgba(255,255,255,.68)}
+        .ab.info{background:rgba(77,200,240,0.09);border:1px solid rgba(77,200,240,0.22);color:rgba(255,255,255,.68)}
+        .ab strong{color:#fff}
+
+        .mr{display:flex;align-items:center;gap:12px;padding:14px 16px 0;position:relative;z-index:2}
+        .rbg{fill:none;stroke:rgba(255,255,255,0.04);stroke-width:8}
+        .rtr{fill:none;stroke-width:8;stroke-linecap:round;transform:rotate(-90deg);transform-origin:50% 50%;stroke:url(#rg);transition:stroke-dashoffset 1.4s cubic-bezier(.4,0,.2,1)}
+        .rct{text-anchor:middle;dominant-baseline:middle}
+        .msc{flex:1;display:flex;flex-direction:column;gap:7px}
+        .ms{background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.055);border-radius:12px;padding:9px 12px;display:flex;align-items:center;gap:9px}
+        .mi{font-size:14px;flex-shrink:0}
+        .mv{font-size:14px;font-weight:600;color:#fff;line-height:1}
+        .ml{font-size:9px;color:rgba(255,255,255,0.26);margin-top:1px}
+
+        .frt{padding:13px 16px 0;position:relative;z-index:2}
+        .sl2{font-size:9px;letter-spacing:1.2px;text-transform:uppercase;color:rgba(255,255,255,0.23);margin-bottom:8px}
+        .fb{height:7px;background:rgba(255,255,255,0.04);border-radius:99px;overflow:hidden;margin-bottom:5px}
+        .ff{height:100%;border-radius:99px;background:linear-gradient(90deg,#5BC8B8,#F0C060);transition:width 1.5s cubic-bezier(.4,0,.2,1)}
+        .fl{display:flex;justify-content:space-between;font-size:9px;color:rgba(255,255,255,0.20)}
+
+        .cal{padding:13px 16px 0;position:relative;z-index:2}
+        .cg{display:grid;grid-template-columns:repeat(7,1fr);gap:3px}
+        .ch{font-size:8px;color:rgba(255,255,255,0.16);text-align:center;text-transform:uppercase;padding-bottom:3px}
+        .cd{aspect-ratio:1;border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:9.5px;cursor:default}
+        .cd.em{background:transparent}
+        .cd.normal   {background:rgba(255,255,255,0.028);color:rgba(255,255,255,0.26)}
+        .cd.period   {background:rgba(232,96,122,0.28);color:#FFAABB;font-weight:600}
+        .cd.fert-low {background:rgba(155,111,212,0.28);color:#C4A0F0;font-weight:500}
+        .cd.fert-high{background:rgba(107,143,232,0.32);color:#A8C4FF;font-weight:600}
+        .cd.peak     {background:rgba(77,200,240,0.34);color:#7EE8FF;font-weight:700;border:1px solid rgba(77,200,240,0.45);box-shadow:0 0 10px rgba(77,200,240,0.18)}
+        .cd.luteal   {background:rgba(196,98,45,0.22);color:rgba(255,160,100,0.75)}
+        .cd.today    {box-shadow:0 0 0 2px #E8607A}
+        .cd.peak.today{box-shadow:0 0 0 2px #E8607A,0 0 10px rgba(77,200,240,0.18)}
+
+        .leg{display:flex;gap:7px;flex-wrap:wrap;padding:9px 16px 0;position:relative;z-index:2}
+        .li{display:flex;align-items:center;gap:4px;font-size:8.5px;color:rgba(255,255,255,0.32)}
+        .ld{width:8px;height:8px;border-radius:50%}
+
+        .src{margin:8px 16px 0;display:inline-flex;align-items:center;gap:5px;background:rgba(77,200,240,0.06);border:1px solid rgba(77,200,240,0.13);border-radius:99px;padding:3px 10px;font-size:8.5px;color:rgba(77,200,240,0.55);position:relative;z-index:2}
+
+        .rcs{padding:13px 16px;position:relative;z-index:2}
+        .rc{background:rgba(255,255,255,0.025);border:1px solid rgba(255,255,255,0.045);border-radius:13px;padding:11px 13px;margin-bottom:7px;display:flex;gap:10px;align-items:flex-start}
+        .rc:last-child{margin-bottom:0}
+        .ri{font-size:16px;flex-shrink:0}
+        .rt{font-size:11px;color:rgba(255,255,255,0.50);line-height:1.6}
+        .rt strong{color:rgba(255,255,255,0.82);font-weight:600}
+
+        .ins{padding:0 16px 16px;position:relative;z-index:2}
+        .ins-hd{font-size:9px;letter-spacing:1.2px;text-transform:uppercase;color:rgba(91,200,184,0.55);margin-bottom:8px}
+        .ib{background:rgba(91,200,184,0.05);border:1px solid rgba(91,200,184,0.12);border-radius:13px;padding:11px 13px;margin-bottom:7px;font-size:11px;color:rgba(255,255,255,0.55);line-height:1.6}
+        .ib:last-child{margin-bottom:0}
+        .ib strong{color:rgba(91,200,184,0.88);font-weight:600}
+        .ib.wi{background:rgba(240,192,96,0.06);border-color:rgba(240,192,96,0.16)}
+        .ib.wi strong{color:rgba(240,192,96,0.9)}
+        .ie{font-size:11px;color:rgba(255,255,255,0.22);text-align:center;padding:6px 0}
+
+        div.dv{height:1px;background:linear-gradient(90deg,transparent,rgba(255,255,255,0.05),transparent);margin:0 16px 12px}
+
+        .htog{width:100%;background:none;border:none;padding:11px 18px;display:flex;justify-content:space-between;align-items:center;color:rgba(255,255,255,0.35);font-size:11px;font-family:'Nunito',sans-serif;cursor:pointer;transition:color .2s;position:relative;z-index:2}
+        .htog:hover{color:rgba(255,255,255,.62)}
+        .ha{transition:transform .3s;display:inline-block}
+        .ha.open{transform:rotate(180deg)}
+        .hbody{display:none;padding:0 16px 14px;position:relative;z-index:2}
+        .hbody.open{display:block}
+        .hr{display:flex;align-items:center;justify-content:space-between;padding:7px 11px;border-radius:10px;margin-bottom:4px;background:rgba(255,255,255,0.025);border:1px solid rgba(255,255,255,0.045);font-size:11px}
+        .hrd{color:rgba(255,255,255,0.52)}
+        .hrl{padding:2px 7px;border-radius:99px;font-size:9.5px;font-weight:600;background:rgba(91,200,184,0.14);color:#5BC8B8}
+        .hdl{width:18px;height:18px;border-radius:50%;background:rgba(255,255,255,0.05);border:none;color:rgba(255,255,255,0.25);cursor:pointer;font-size:9px;display:flex;align-items:center;justify-content:center;transition:all .2s}
+        .hdl:hover{background:rgba(232,96,122,0.20);color:#E8607A}
+        .nh{font-size:11px;color:rgba(255,255,255,0.22);text-align:center;padding:6px 0}
+
+        .ip{margin:0 16px 22px;background:rgba(255,255,255,0.025);border:1px solid rgba(255,255,255,0.06);border-radius:18px;overflow:hidden;position:relative;z-index:2}
+        .iptog{width:100%;background:none;border:none;padding:13px 16px;display:flex;justify-content:space-between;align-items:center;color:rgba(255,255,255,0.42);font-size:12px;font-family:'Nunito',sans-serif;cursor:pointer;transition:color .2s}
+        .iptog:hover{color:#fff}
+        .ia{transition:transform .3s;display:inline-block}
+        .ia.open{transform:rotate(180deg)}
+        .ipbody{display:none;padding:0 16px 16px}
+        .ipbody.open{display:block}
+        .inp-info{font-size:10.5px;color:rgba(255,255,255,0.35);line-height:1.6;margin-bottom:10px;padding:9px 11px;background:rgba(255,255,255,0.03);border-radius:10px;border:1px solid rgba(255,255,255,0.05)}
+        .lbl{font-size:10px;color:rgba(255,255,255,0.32);margin-bottom:4px;margin-top:10px}
+        .inp{width:100%;background:rgba(255,255,255,0.055);border:1px solid rgba(255,255,255,0.08);border-radius:11px;padding:9px 13px;font-size:13px;color:#fff;font-family:'Nunito',sans-serif;outline:none;transition:border-color .2s}
+        .inp:focus{border-color:rgba(232,96,122,.42)}
+        .inp::-webkit-calendar-picker-indicator{filter:invert(1) opacity(.3)}
+        .sbtn{width:100%;margin-top:12px;background:linear-gradient(135deg,#E8607A,#9B4D6E);border:none;border-radius:12px;padding:11px;color:#fff;font-size:13px;font-weight:600;font-family:'Nunito',sans-serif;cursor:pointer;transition:opacity .2s}
+        .sbtn:hover{opacity:.86}
+        .sbtn:disabled{opacity:.4;cursor:not-allowed}
+
+        .toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%) translateY(14px);background:rgba(18,10,22,.96);border:1px solid rgba(91,200,184,.28);border-radius:11px;padding:8px 18px;font-size:12px;color:#fff;opacity:0;transition:all .3s;pointer-events:none;z-index:9999}
+        .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+      </style>
+
+      <div class="card">
+        <div class="g1"></div><div class="g2"></div>
+
+        <div class="sbar">
+          <div class="sbar-l">
+            <div class="dot" id="dot"></div>
+            <div class="stxt" id="stxt">Se încarcă…</div>
+          </div>
+          <div class="spill">✦ Smart</div>
+        </div>
+
+        <div class="topbar">
+          <div class="brand">Ciclul <em>meu</em></div>
+          <div class="sub">Monitorizare · Fertilitate · Recomandări</div>
+        </div>
+
+        <div class="ph" id="phHero">
+          <div class="ph-tag">Faza curentă</div>
+          <div class="ph-name" id="phN">—</div>
+          <div class="ph-desc" id="phD">Se caută senzorii integrării…</div>
+          <div class="day-orb"><div class="dn" id="dayN">—</div><div class="dl">ziua</div></div>
+        </div>
+
+        <div class="az"><div class="ab h" id="alertB"><span id="aIco"></span><span id="aTxt"></span></div></div>
+
+        <div class="mr">
+          <svg width="114" height="114" viewBox="0 0 114 114" style="overflow:visible;flex-shrink:0">
+            <defs>
+              <linearGradient id="rg" x1="0%" y1="0%" x2="100%" y2="0%">
+                <stop offset="0%" stop-color="#E8607A"/>
+                <stop offset="50%" stop-color="#9B6FD4"/>
+                <stop offset="100%" stop-color="#4DC8F0"/>
+              </linearGradient>
+            </defs>
+            <circle class="rbg" cx="57" cy="57" r="48"/>
+            <circle class="rtr" id="ringC" cx="57" cy="57" r="48" stroke-dasharray="301.6" stroke-dashoffset="301.6"/>
+            <text class="rct" x="57" y="48" font-size="9" fill="rgba(255,255,255,0.26)">Progres</text>
+            <text class="rct" x="57" y="62" font-family="Playfair Display,serif" font-size="20" fill="#fff" id="rPct">—</text>
+            <text class="rct" x="57" y="75" font-size="9" fill="rgba(255,255,255,0.24)" id="rLeft">—</text>
+          </svg>
+          <div class="msc">
+            <div class="ms"><div class="mi">📅</div><div><div class="mv" id="sCLen">—</div><div class="ml">zile/ciclu</div></div></div>
+            <div class="ms"><div class="mi">🥚</div><div><div class="mv" id="sOvul">—</div><div class="ml">data ovulației</div></div></div>
+            <div class="ms"><div class="mi">🔜</div><div><div class="mv" id="sNext">—</div><div class="ml">urm. perioadă</div></div></div>
+          </div>
+        </div>
+
+        <div class="frt">
+          <div class="sl2">Nivelul de fertilitate estimat</div>
+          <div class="fb"><div class="ff" id="ffill" style="width:0%"></div></div>
+          <div class="fl"><span>Scăzut</span><span id="fLbl">—</span><span>Maxim</span></div>
+        </div>
+
+        <div class="cal">
+          <div class="sl2">Calendar – luna curentă</div>
+          <div class="cg" id="calG"></div>
+        </div>
+
+        <div class="leg">
+          <div class="li"><div class="ld" style="background:#E8607A"></div>Menstruație</div>
+          <div class="li"><div class="ld" style="background:#9B6FD4"></div>Fertilă</div>
+          <div class="li"><div class="ld" style="background:#6B8FE8"></div>Foarte fertilă</div>
+          <div class="li"><div class="ld" style="background:#4DC8F0"></div>Ovulație</div>
+          <div class="li"><div class="ld" style="background:#C4622D"></div>Luteală</div>
+          <div class="li"><div class="ld" style="background:#E8607A;box-shadow:0 0 0 2px rgba(232,96,122,.5)"></div>Azi</div>
+        </div>
+
+        <div class="src">📚 Wilcox et al. BMJ 2000 · Johns Hopkins · ACOG</div>
+
+        <div class="dv" style="margin-top:13px"></div>
+
+        <div class="rcs">
+          <div class="sl2" style="margin-bottom:8px">Recomandări pentru azi</div>
+          <div id="recL"></div>
+        </div>
+
+        <div class="dv"></div>
+
+        <div class="ins">
+          <div class="ins-hd">✦ Insights inteligente</div>
+          <div id="insL"></div>
+        </div>
+
+        <div class="dv"></div>
+
+        <button class="htog" id="htog">
+          <span>📋 Istoricul ciclurilor (<span id="hCnt">0</span>)</span>
+          <span class="ha" id="hArr">▼</span>
+        </button>
+        <div class="hbody" id="hBody"><div id="hList"></div></div>
+
+        <div class="ip">
+          <button class="iptog" id="iptog">
+            <span>⚙️ Înregistrează ciclu nou</span>
+            <span class="ia" id="iArr">▼</span>
+          </button>
+          <div class="ipbody" id="iBody">
+            <div class="inp-info">Selectează prima zi a ultimei menstruații. Durata ciclului și a perioadei se preiau automat din configurarea Home Assistant.</div>
+            <div class="lbl">Prima zi a ultimei menstruații</div>
+            <input type="date" class="inp" id="inD"/>
+            <button class="sbtn" id="saveBtn">💾 Salvează în Home Assistant</button>
+          </div>
+        </div>
+      </div>
+      <div class="toast" id="toast"></div>
+    `;
+
+    this.shadowRoot.getElementById('htog').addEventListener('click', () => this._toggleH());
+    this.shadowRoot.getElementById('iptog').addEventListener('click', () => this._toggleI());
+    this.shadowRoot.getElementById('saveBtn').addEventListener('click', () => this._saveCycle());
+    this.shadowRoot.getElementById('inD').value = new Date().toISOString().split('T')[0];
+  }
+
+  _updateFromHass() {
+    if (!this._hass) return;
+    const states = this._hass.states;
+    const cycleDay = Object.keys(states).find(k => k.startsWith('sensor.') && k.endsWith('_cycle_day'));
+    if (!cycleDay) {
+      this._setStatus(false, 'Integrarea Cycle Tracker nu a fost găsită');
+      this._render(null);
+      return;
+    }
+    this._prefix = cycleDay.replace('sensor.', '').replace('cycle_day', '');
+    const get = name => states[`sensor.${this._prefix}${name}`];
+    const sensors = {
+      cycle_day:         get('cycle_day'),
+      cycle_phase:       get('cycle_phase'),
+      fertility_level:   get('fertility_level'),
+      days_until_period: get('days_until_period'),
+      next_period_date:  get('next_period_date'),
+      ovulation_date:    get('ovulation_date'),
+      cycle_progress:    get('cycle_progress'),
+    };
+    this._lastSensors = sensors;
+    this._setStatus(true, 'Home Assistant · conectat');
+    this._render(sensors);
+    if (!this._entryId) this._findEntryId();
+  }
+
+  async _findEntryId() {
+    try {
+      const entries = await this._hass.callApi('GET', 'config/config_entries/entry');
+      const e = entries.find(x => x.domain === 'cycle_tracker');
+      if (e) this._entryId = e.entry_id;
+    } catch {}
+  }
+
+  _setStatus(ok, msg) {
+    const dot = this.shadowRoot.getElementById('dot');
+    const stxt = this.shadowRoot.getElementById('stxt');
+    if (!dot || !stxt) return;
+    dot.className = ok ? 'dot' : 'dot err';
+    stxt.textContent = msg;
+  }
+
+  _render(sensors) {
+    const $ = id => this.shadowRoot.getElementById(id);
+    if (!$('phN')) return;
+    const history = loadHistory();
+    const haPhase = sensors?.cycle_phase?.state      || 'foliculara';
+    const haDay   = parseInt(sensors?.cycle_day?.state || 1);
+    const haFert  = sensors?.fertility_level?.state   || 'scazut';
+    const haDL    = parseInt(sensors?.days_until_period?.state ?? 27);
+    const haProg  = parseInt(sensors?.cycle_progress?.state    || 0);
+    const haNext  = sensors?.next_period_date?.state;
+    const haOvul  = sensors?.ovulation_date?.state;
+    const attrs   = sensors?.cycle_day?.attributes || {};
+    const cLen    = attrs.cycle_length  || 28;
+    const pLen    = attrs.period_length || 5;
+    const ovDay   = attrs.ovulation_day || 14;
+    const hasData = !!sensors?.cycle_day;
+    const ph = PHASES[haPhase] || PHASES.foliculara;
+    const fp = FERT_PCT[haFert] || 5;
+    const fl = FERT_LBL[haFert] || 'Scăzut';
+
+    const hero = $('phHero');
+    if (hero) { hero.style.background = hasData ? ph.bg : 'rgba(255,255,255,0.04)'; hero.style.borderColor = hasData ? ph.br : 'rgba(255,255,255,0.08)'; }
+    $('phN').textContent  = hasData ? ph.name : '—';
+    $('phD').textContent  = hasData ? ph.desc : 'Adaugă ciclul din panoul ⚙️ de mai jos.';
+    $('dayN').textContent = hasData ? haDay   : '—';
+
+    const ab = $('alertB');
+    if (ab) {
+      if (hasData && haDL <= 3) {
+        ab.className = 'ab warn'; $('aIco').textContent = '🔔';
+        $('aTxt').innerHTML = haDL===0 ? '<strong>Menstruația poate începe azi!</strong>' : `Menstruația în <strong>${haDL} ${haDL===1?'zi':'zile'}</strong>.`;
+      } else if (hasData && haPhase === 'ovulatie') {
+        ab.className = 'ab info'; $('aIco').textContent = '🩵';
+        $('aTxt').innerHTML = '<strong>Vârf LH → Ovulație!</strong> Fertilitate maximă.';
+      } else { ab.className = 'ab h'; }
+    }
+
+    setTimeout(() => {
+      const ring = $('ringC');
+      if (ring) ring.style.strokeDashoffset = 301.6 - (haProg/100)*301.6;
+      if ($('rPct'))  $('rPct').textContent  = hasData ? haProg+'%' : '—';
+      if ($('rLeft')) $('rLeft').textContent = hasData ? haDL+' zile rămase' : '—';
+    }, 80);
+
+    $('sCLen').textContent = hasData ? cLen : '—';
+    $('sOvul').textContent = haOvul ? fmtDate(new Date(haOvul)) : '—';
+    $('sNext').textContent = haNext  ? fmtDate(new Date(haNext)) : '—';
+
+    setTimeout(() => { const ff=$('ffill'); if(ff) ff.style.width = hasData ? fp+'%' : '0%'; }, 100);
+    $('fLbl').textContent = hasData ? fl : '—';
+
+    this._buildCal(sensors, pLen, ovDay, haDay, hasData, cLen);
+    $('recL').innerHTML = hasData
+      ? ph.recs.map(r=>`<div class="rc"><div class="ri">${r.i}</div><div class="rt">${r.t}</div></div>`).join('')
+      : '<div class="rc"><div class="rt" style="color:rgba(255,255,255,0.28)">Adaugă ciclul din panoul ⚙️ de mai jos.</div></div>';
+    this._renderInsights(history, cLen);
+    this._renderHistory(history);
+    $('hCnt').textContent = history.length;
+  }
+
+  _buildCal(sensors, pLen, ovDay, currentDay, hasData, cLen) {
+    const $ = id => this.shadowRoot.getElementById(id);
+    const heads = ['Lu','Ma','Mi','Jo','Vi','Sâ','Du'];
+    let html = heads.map(d=>`<div class="ch">${d}</div>`).join('');
+    const today = new Date(); today.setHours(0,0,0,0);
+    const year=today.getFullYear(), month=today.getMonth();
+    const fom=new Date(year,month,1);
+    let sw=fom.getDay(); sw=sw===0?6:sw-1;
+    for(let i=0;i<sw;i++) html+=`<div class="cd em"></div>`;
+    const dim=new Date(year,month+1,0).getDate();
+    const cycleStart=new Date(today); cycleStart.setDate(today.getDate()-currentDay+1);
+
+    for(let d=1;d<=dim;d++){
+      const date=new Date(year,month,d);
+      const isToday=d===today.getDate();
+      const diff=Math.floor((date-cycleStart)/86400000);
+      const norm=((diff%cLen)+cLen)%cLen;
+      const dic=norm+1;
+      let cls='normal';
+      if(hasData){
+        if(dic>=1&&dic<=pLen)              cls='period';
+        else if(dic===ovDay||dic===ovDay-1) cls='peak';
+        else if(dic===ovDay-2)             cls='fert-high';
+        else if(dic>=ovDay-5&&dic<=ovDay-3) cls='fert-low';
+        else if(dic>ovDay)                 cls='luteal';
+      }
+      if(isToday) cls+=' today';
+      html+=`<div class="cd ${cls}">${d}</div>`;
+    }
+    if($('calG')) $('calG').innerHTML=html;
+  }
+
+  _renderInsights(history, haLen) {
+    const el=this.shadowRoot.getElementById('insL');
+    if(!el) return;
+    if(!history.length){ el.innerHTML='<div class="ie">Înregistrează cicluri din ⚙️ pentru insights.</div>'; return; }
+    const sl=smartLen(history,haLen);
+    const items=[];
+    if(history.length>=2){ const note=sl!==haLen?' (ajustat din istoric)':''; items.push({w:false,t:`<strong>Durata medie:</strong> ${sl} zile${note}, din ${history.length} cicluri.`}); }
+    if(isIrregular(history)) items.push({w:true,t:`<strong>Ciclu neregulat detectat.</strong> Variațiile depășesc 4 zile.`});
+    else if(history.length>=3) items.push({w:false,t:`✓ <strong>Ciclu regulat.</strong> Variațiile sunt în parametri normali.`});
+    const tr=trendDir(history);
+    if(tr==='longer')  items.push({w:true, t:`<strong>Tendință:</strong> ciclurile devin mai lungi recent.`});
+    if(tr==='shorter') items.push({w:true, t:`<strong>Tendință:</strong> ciclurile devin mai scurte recent.`});
+    if(tr==='stable'&&history.length>=4) items.push({w:false,t:`✓ <strong>Ciclu stabil</strong> în ultimele luni.`});
+    if(history.length>=5) items.push({w:false,t:`🏆 <strong>${history.length} cicluri înregistrate!</strong> Predicțiile sunt precise.`});
+    el.innerHTML=items.map(x=>`<div class="ib ${x.w?'wi':''}">${x.t}</div>`).join('');
+  }
+
+  _renderHistory(history) {
+    const el=this.shadowRoot.getElementById('hList');
+    if(!el) return;
+    if(!history.length){ el.innerHTML='<div class="nh">Niciun ciclu înregistrat încă.</div>'; return; }
+    const sa=[...history].sort((a,b)=>new Date(a)-new Date(b));
+    el.innerHTML=[...sa].reverse().map(d=>{
+      const idx=sa.indexOf(d);
+      let ls='curent',lc='ok';
+      if(idx<sa.length-1){ const diff=Math.round((new Date(sa[idx+1])-new Date(d))/86400000); ls=diff+' zile'; lc=(diff>=21&&diff<=35)?'ok':''; }
+      return `<div class="hr"><span class="hrd">${fmtDateL(new Date(d))}</span><span class="hrl ${lc}">${ls}</span><button class="hdl" data-date="${d}">✕</button></div>`;
+    }).join('');
+    el.querySelectorAll('.hdl').forEach(btn=>{
+      btn.addEventListener('click',()=>{ const h=loadHistory().filter(x=>x!==btn.dataset.date); saveHistory(h); this._render(this._lastSensors); this._showToast('🗑️ Șters'); });
+    });
+  }
+
+  async _saveCycle() {
+    const $=id=>this.shadowRoot.getElementById(id);
+    const dv=$('inD').value;
+    if(!dv){ this._showToast('⚠️ Selectează o dată'); return; }
+    const btn=$('saveBtn');
+    btn.disabled=true; btn.textContent='Se salvează…';
+    const h=loadHistory();
+    if(!h.includes(dv)){ h.push(dv); saveHistory(h); }
+    const sl=smartLen(h, this._lastSensors?.cycle_day?.attributes?.cycle_length||28);
+    const pLen=this._lastSensors?.cycle_day?.attributes?.period_length||5;
+    let saved=false;
+    if(this._hass&&this._entryId){
+      try{ await this._hass.callService('cycle_tracker','update_cycle',{ entry_id:this._entryId, cycle_start_date:dv, cycle_length:sl, period_length:pLen }); saved=true; }
+      catch(e){ console.warn('CycleTracker: callService error',e); }
+    }
+    btn.disabled=false; btn.textContent='💾 Salvează în Home Assistant';
+    this._showToast(saved?'✅ Salvat în Home Assistant!':'💾 Salvat local (HA nu a răspuns)');
+    $('iBody').classList.remove('open'); $('iArr').classList.remove('open'); this._inpOpen=false;
+  }
+
+  _toggleH(){ this._histOpen=!this._histOpen; this.shadowRoot.getElementById('hBody').classList.toggle('open',this._histOpen); this.shadowRoot.getElementById('hArr').classList.toggle('open',this._histOpen); }
+  _toggleI(){ this._inpOpen=!this._inpOpen; this.shadowRoot.getElementById('iBody').classList.toggle('open',this._inpOpen); this.shadowRoot.getElementById('iArr').classList.toggle('open',this._inpOpen); }
+
+  _showToast(msg){ const t=this.shadowRoot.getElementById('toast'); if(!t) return; t.textContent=msg; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),3200); }
+}
+
+customElements.define('cycle-tracker-card', CycleTrackerCard);
