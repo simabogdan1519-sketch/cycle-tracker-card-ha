@@ -691,7 +691,7 @@ class CycleTrackerCard extends HTMLElement {
     const histAttrs = sensors?.cycle_history?.attributes || {};
     const cLen    = histAttrs.avg_cycle_length || attrs.cycle_length  || 28;
     const pLen    = attrs.period_length || 5;
-    const ovDay   = attrs.ovulation_day || 14;
+    const ovDay   = cLen - 14;  // calculat din cLen, nu din atribut senzor
     const hasData = !!sensors?.cycle_day;
     const ph = PHASES[haPhase] || PHASES.foliculara;
     const fp = FERT_PCT[haFert] || 5;
