@@ -162,14 +162,133 @@ function fmtDate(d) { return (!d||isNaN(d)) ? '—' : `${d.getDate()} ${MS[d.get
 function fmtDateL(d) { return (!d||isNaN(d)) ? '—' : `${d.getDate()} ${ML[d.getMonth()]} ${d.getFullYear()}`; }
 function fmtDateFull(d) { return (!d||isNaN(d)) ? '—' : `${DAYS_RO[d.getDay()]}, ${d.getDate()} ${ML[d.getMonth()]} ${d.getFullYear()}`; }
 
+// Texte hormonale variate per tip de zi
+const HORMONAL_TEXTS = {
+  period: [
+    'Estrogenul și progesteronul sunt la minim. Uterul elimină mucoasa endometrială. FSH începe să crească ușor pentru a pregăti următorul folicul.',
+    'Prostaglandinele contractă uterul provocând crampe — nivelul lor scade treptat în primele zile. Corpul pierde fier prin sângerare.',
+    'Faza menstruală resetează ciclul. Estrogenul e la cel mai scăzut nivel, de aceea energia și starea de spirit sunt mai reduse.',
+    'FSH (hormonul foliculostimulant) crește ușor chiar din prima zi — semnal că ovarele se pregătesc pentru noul ciclu.',
+  ],
+  foliculara: [
+    'FSH stimulează creșterea foliculilor ovarieni. Estrogenul crește progresiv, îmbunătățind energia, claritatea mentală și starea de spirit.',
+    'Estrogenul stimulează producția de serotonină și dopamină — de aceea te simți mai energică, mai sociabilă și mai motivată.',
+    'Foliculii concurează — de obicei unul devine dominant (foliculul de Graaf). Estrogenul îngroașă mucoasa uterină.',
+    'Estrogenul la nivel crescut îmbunătățește memoria de lucru și neuroplasticitatea — creierul formează conexiuni noi mai ușor.',
+  ],
+  'fert-low': [
+    'Estrogenul e la nivel ridicat. Mucusul cervical devine mai fluid și mai abundant — semn vizibil de fertilitate crescută.',
+    'Spermatozoizii pot supraviețui 3-5 zile în mucusul cervical fertil. Acesta îi ghidează și îi protejează spre ovul.',
+    'LH (hormonul luteinizant) începe să crească gradual. Fereastră fertilă activă — probabilitate semnificativă de concepție.',
+    'Temperatura bazală e ușor scăzută. Mucusul tip "albuș de ou" — transparent, elastic — este cel mai fertil semn extern.',
+  ],
+  'fert-high': [
+    'Vârful de estrogen e iminent. LH crește rapid spre vârf. Mucusul cervical e la maximum de fertilitate — transparent și elastic.',
+    'Foliculul dominant e aproape matur. Testosteronul crește ușor, crescând libidoul și energia fizică.',
+    'LH surge va declanșa ovulația în 24-36 ore. Una dintre cele mai fertile zile ale ciclului.',
+    'Estrogenul la vârf influențează pozitiv tonul vocii, limbajul corporal și atractivitatea — studii confirmă modificări subtile.',
+  ],
+  peak: [
+    'Vârful LH declanșează eliberarea ovulului. Temperatura bazală crește cu 0.2-0.5°C. Ovulul e viabil 12-24 ore.',
+    'Ovulația — evenimentul central al ciclului. Testosteronul și estrogenul sunt la vârf absolut, maximizând energia și performanța.',
+    'Foliculul rupt devine corpul galben care va produce progesteron în faza luteală. Fertilitate maximă acum.',
+    'Creierul are acum cel mai înalt nivel de dopamină și serotonină din tot ciclul — motivație, energie și dispoziție la vârf.',
+  ],
+  luteal: [
+    'Progesteronul domină faza luteală. Temperatura bazală rămâne ridicată. Dacă nu apare sarcina, nivelul hormonal scade spre finalul fazei.',
+    'Progesteronul are efect sedativ ușor — poți simți somnolență crescută și nevoia de mai mult somn. E fiziologic normal.',
+    'Estrogenul scade treptat în a doua jumătate a fazei luteale. Scăderea serotoninei poate explica iritabilitatea și poftele.',
+    'Metabolismul bazal crește cu ~100-300 kcal/zi în faza luteală — corpul consumă mai multă energie, de aceea apar poftele.',
+    'Progesteronul relaxează musculatura netedă — poate cauza balonare și constipație. Fibrele și hidratarea ajută semnificativ.',
+  ],
+  normal: [
+    'Hormoni în tranziție între faze. Corpul se pregătește pentru faza următoare.',
+    'Estrogenul crește gradual după menstruație — energia se reface treptat.',
+    'FSH activează foliculii ovarieni. Ciclul se resetează și își urmează cursul firesc.',
+  ],
+};
+
+// Recomandări variate per tip de zi (rotative după ziua ciclului)
+const MODAL_RECS = {
+  period: [
+    { ico:'🛁', text:'Pernă termică sau plasture termic pe abdomen — reduce crampele cu până la 40% fără medicamente.' },
+    { ico:'🫖', text:'Ceai de ghimbir 2-3 căni/zi — efectul antiinflamator e similar ibuprofenului în doze mici (studiu 2009, J Pain).' },
+    { ico:'🧘', text:'Yoga yin: Child\'s Pose și Supta Baddha Konasana relaxează musculatura pelvică și reduc durerea.' },
+    { ico:'🥗', text:'Fier + vitamina C: spanac cu lămâie, linte cu ardei roșu — vitamina C crește absorbția fierului de 3-4x.' },
+    { ico:'🐟', text:'Omega-3 din somon sau sardine reduce prostaglandinele responsabile de crampe — efect dovedit clinic.' },
+    { ico:'💊', text:'Magneziu 300mg/zi din nuci, semințe de dovleac sau supliment — studii arată reducerea crampelor cu 40%.' },
+    { ico:'😴', text:'Corpul depune efort suplimentar — dormi cu 30-60 min mai mult dacă poți, fără vinovăție.' },
+    { ico:'📵', text:'Limitează cafeina: crește cortizolul și poate intensifica crampele, anxietatea și sensibilitatea sânilor.' },
+  ],
+  foliculara: [
+    { ico:'🏋️', text:'Estrogenul crește rezistența musculară — cel mai bun moment pentru antrenamente intense și volum mare.' },
+    { ico:'🥦', text:'Broccoli, kale, varză susțin metabolizarea estrogenului prin ficat și reduc riscul de estrogen dominant.' },
+    { ico:'🎯', text:'Claritate mentală la vârf — ideal pentru proiecte noi, brainstorming, prezentări și decizii importante.' },
+    { ico:'🌿', text:'Zinc din semințe de dovleac și seleniu din nuci braziliene (1-2/zi) susțin maturarea foliculilor.' },
+    { ico:'☀️', text:'Vitamina D — 15-20 min soare sau 1000-2000 UI supliment — esențială pentru funcția ovariană optimă.' },
+    { ico:'🫐', text:'Antioxidanții din afine și rodie protejează foliculii de stresul oxidativ și îmbunătățesc calitatea ovulului.' },
+    { ico:'🌊', text:'Hidratare cu electroliți pentru antrenamente lungi — sodiu, potasiu, magneziu previn crampele musculare.' },
+    { ico:'🌱', text:'Probiotice din iaurt, kefir sau kimchi — microbiomul intestinal influențează direct nivelul estrogenului.' },
+  ],
+  'fert-low': [
+    { ico:'🥗', text:'Antioxidanți intensivi: vitamina C, E, zinc, seleniu — protejează ovulul și susțin mobilitatea spermatozoizilor.' },
+    { ico:'💦', text:'Hidratare optimă — mucusul cervical fertil e în mare parte apă. Cel puțin 2L/zi în această perioadă.' },
+    { ico:'🚫', text:'Evită alcoolul și fumatul — reduc semnificativ fertilitatea la ambii parteneri chiar și în cantități mici.' },
+    { ico:'🥑', text:'Grăsimi sănătoase: avocado, ulei de măsline, nuci — precursori esențiali ai hormonilor sexuali.' },
+    { ico:'🧘', text:'Stresul cronic reduce LH și poate întârzia sau bloca ovulația — mindfulness și respirația profundă ajută.' },
+    { ico:'🍵', text:'Ceai verde moderat (1-2 căni) — catechinele au efect antioxidant, dar excesul poate reduce absorbția folaților.' },
+  ],
+  'fert-high': [
+    { ico:'🥚', text:'Una dintre cele mai fertile zile — mucus cervical transparent și elastic (tip albuș de ou) confirmă fertilitatea.' },
+    { ico:'🫐', text:'Vitamina C din kiwi și ardei roșu susține integritatea foliculului și calitatea ovulului în aceste ore critice.' },
+    { ico:'⚡', text:'Testosteronul crescut îți oferă energie, forță și motivație extra — fructifică pentru sport și productivitate.' },
+    { ico:'🎤', text:'Studii arată că tonul vocii devine mai înalt și mai atrăgător în jurul ovulației — comunicare la vârf.' },
+    { ico:'🥩', text:'Proteine complete + zinc din carne de vită sau stridii — susțin sinteza LH pentru declanșarea ovulației.' },
+    { ico:'😌', text:'Evită stresul acut — cortizolul ridicat poate suprima vârful LH și întârzia sau bloca ovulația.' },
+  ],
+  peak: [
+    { ico:'💪', text:'Performanță fizică maximă: testosteronul + estrogenul la vârf cresc forța, viteza și rezistența. Ziua ideală pentru recorduri.' },
+    { ico:'🌡️', text:'Temperatura bazală crește cu 0.2-0.5°C după ovulație — confirmarea că a avut loc. Urmărește-o dimineața.' },
+    { ico:'🍓', text:'Antioxidanți acum: vitamina E din migdale, licopenul din roșii coapte — protejează ovulul în tranzit.' },
+    { ico:'💬', text:'Empatie, carisma și comunicarea sunt la maximum absolut — prezentări, negocieri, întâlniri importante.' },
+    { ico:'🧬', text:'Ovulul e viabil 12-24 ore. Combinat cu supraviețuirea spermatozoizilor de 5 zile, fereastra totală e de ~6 zile.' },
+    { ico:'💃', text:'Energia socială e la vârf — planifică activitățile care necesită prezență, charismă și interacțiune.' },
+  ],
+  luteal: [
+    { ico:'🍫', text:'Magneziu 300-400mg/zi din ciocolată neagră >70%, nuci și semințe — reduce simptomele PMS cu până la 40%.' },
+    { ico:'🥗', text:'Carbohidrați complecși: quinoa, orez brun, cartofi dulci — stabilizează glicemia și previn schimbările bruște de dispoziție.' },
+    { ico:'🐟', text:'Omega-3 + vitamina B6 din somon și banane — reduc retenția de apă, iritabilitatea și sensibilitatea sânilor.' },
+    { ico:'🌙', text:'Cameră răcoroasă la 18-20°C pentru somn — temperatura bazală crescută perturbă somnul profund.' },
+    { ico:'💊', text:'Vitamina B6 (50mg/zi) reduce retenția de apă, sensibilitatea sânilor și schimbările de dispoziție — studii clinice.' },
+    { ico:'🏃', text:'Mers 30 min în natură zilnic — reduce simptomele PMDD semnificativ. Efectul e dovedit clinic.' },
+    { ico:'🥦', text:'DIM din broccoli și varză ajută ficatul să proceseze excesul de estrogen și echilibrează raportul estrogen/progesteron.' },
+    { ico:'😮‍💨', text:'Respirație diafragmatică 5 min/zi — scade cortizolul cu până la 25% și calmează sistemul nervos simpatic.' },
+  ],
+  normal: [
+    { ico:'💧', text:'Hidratare regulată — cel puțin 1.5-2L apă/zi menține echilibrul hormonal și energia constantă.' },
+    { ico:'🥗', text:'Alimentație variată și colorată — micronutrienții din legume și fructe susțin toate fazele ciclului.' },
+    { ico:'😴', text:'Somn regulat 7-9 ore — ritmul circadian sănătos sincronizează producția hormonală.' },
+  ],
+};
+
+function getModalRec(type, dic) {
+  const pool = MODAL_RECS[type] || MODAL_RECS.normal;
+  return pool[dic % pool.length];
+}
+
+function getHormonalText(type, dic) {
+  const pool = HORMONAL_TEXTS[type] || HORMONAL_TEXTS.normal;
+  return pool[dic % pool.length];
+}
+
 const DAY_DETAILS = {
-  period:     { sticker:'🩸', emoji:'🌹', label:'Menstruație',        phaseIco:'🌹', recIco:'🛁',  color:'rgba(232,96,122,0.18)',  border:'rgba(232,96,122,0.32)',  hormonal:'Estrogen și progesteron sunt la nivel minim. Uterul elimină mucoasa endometrială. FSH începe să crească ușor.',                                                                        fert:2,  fertLbl:'Scăzut',       rec:'Odihnă activă — yoga ușoară, stretching. Alimente bogate în fier (spanac, linte). Evită efortul intens.' },
-  foliculara: { sticker:'🌿', emoji:'🌱', label:'Foliculară',          phaseIco:'🌱', recIco:'🏃',  color:'rgba(91,200,184,0.14)',   border:'rgba(91,200,184,0.25)',  hormonal:'FSH stimulează creșterea foliculilor. Estrogenul crește progresiv, îmbunătățind energia, starea de spirit și claritatea mentală.',                                                   fert:5,  fertLbl:'Scăzut',       rec:'Energie în creștere — ideal pentru antrenamente de forță, proiecte noi și socializare. Consum de zinc și vitamina D.' },
-  'fert-low': { sticker:'💜', emoji:'💜', label:'Fertilă',             phaseIco:'🌸', recIco:'🥗',  color:'rgba(155,111,212,0.18)', border:'rgba(155,111,212,0.35)', hormonal:'Estrogenul e la nivel ridicat. Mucusul cervical devine mai fluid. Spermatozoizii pot supraviețui 3-5 zile.',                                                                         fert:45, fertLbl:'Înalt',        rec:'Fereastră fertilă activă. Mucusul cervical susține mobilitatea spermatozoizilor. Antioxidanți pentru calitatea ovulului.' },
-  'fert-high':{ sticker:'💙', emoji:'💙', label:'Foarte fertilă',      phaseIco:'🔵', recIco:'🫐',  color:'rgba(107,143,232,0.18)', border:'rgba(107,143,232,0.38)', hormonal:'Vârf de estrogen iminent. LH începe să crească. Mucusul cervical e transparent și elastic — semn de fertilitate maximă apropiată.',                                                        fert:75, fertLbl:'Foarte înalt',  rec:'Una dintre cele mai fertile zile. Mucus cervical tip "albuș de ou" — semn că ovulația e la 1-2 zile distanță.' },
-  peak:       { sticker:'✨', emoji:'✨', label:'Ovulație',             phaseIco:'🥚', recIco:'💪',  color:'rgba(77,200,240,0.18)',  border:'rgba(77,200,240,0.42)',  hormonal:'Vârf LH declanșează eliberarea ovulului. Temperatura bazală crește ușor. Ovulul e viabil 12-24 ore.',                                                                                    fert:98, fertLbl:'Maxim',         rec:'Fertilitate maximă — ~31-33% șanse de concepție. Performanță fizică și cognitivă la vârf. Energie și încredere crescute.' },
-  luteal:     { sticker:'🍂', emoji:'🍂', label:'Luteală',             phaseIco:'🌙', recIco:'🍫',  color:'rgba(196,98,45,0.15)',   border:'rgba(196,98,45,0.28)',   hormonal:'Progesteronul domină această fază. Temperatura bazală rămâne ridicată. Dacă nu apare sarcina, nivelul hormonal scade treptat spre finalul fazei.',                                          fert:3,  fertLbl:'Scăzut',       rec:'Prioritizează somnul și recuperarea. Magneziu pentru PMS, ciocolată neagră >70%. Jurnal pentru emoții.' },
-  normal:     { sticker:'🌿', emoji:'🌿', label:'Foliculară timpurie', phaseIco:'🌱', recIco:'💧',  color:'rgba(255,255,255,0.06)', border:'rgba(255,255,255,0.10)', hormonal:'Hormoni în tranziție. Corpul se pregătește pentru următoarea fază a ciclului.',                                                                                                                   fert:3,  fertLbl:'Scăzut',       rec:'Perioadă de tranziție. Menține un stil de viață echilibrat — hidratare, somn regulat, alimentație variată.' },
+  period:     { sticker:'🩸', emoji:'🌹', label:'Menstruație',        phaseIco:'🌹', color:'rgba(232,96,122,0.18)',  border:'rgba(232,96,122,0.32)',  fert:2,  fertLbl:'Scăzut' },
+  foliculara: { sticker:'🌿', emoji:'🌱', label:'Foliculară',          phaseIco:'🌱', color:'rgba(91,200,184,0.14)',   border:'rgba(91,200,184,0.25)',  fert:5,  fertLbl:'Scăzut' },
+  'fert-low': { sticker:'💜', emoji:'💜', label:'Fertilă',             phaseIco:'🌸', color:'rgba(155,111,212,0.18)', border:'rgba(155,111,212,0.35)', fert:45, fertLbl:'Înalt' },
+  'fert-high':{ sticker:'💙', emoji:'💙', label:'Foarte fertilă',      phaseIco:'🔵', color:'rgba(107,143,232,0.18)', border:'rgba(107,143,232,0.38)', fert:75, fertLbl:'Foarte înalt' },
+  peak:       { sticker:'✨', emoji:'✨', label:'Ovulație',             phaseIco:'🥚', color:'rgba(77,200,240,0.18)',  border:'rgba(77,200,240,0.42)',  fert:98, fertLbl:'Maxim' },
+  luteal:     { sticker:'🍂', emoji:'🍂', label:'Luteală',             phaseIco:'🌙', color:'rgba(196,98,45,0.15)',   border:'rgba(196,98,45,0.28)',   fert:3,  fertLbl:'Scăzut' },
+  normal:     { sticker:'🌿', emoji:'🌿', label:'Foliculară timpurie', phaseIco:'🌱', color:'rgba(255,255,255,0.06)', border:'rgba(255,255,255,0.10)', fert:3,  fertLbl:'Scăzut' },
 };
 
 class CycleTrackerCard extends HTMLElement {
@@ -895,9 +1014,10 @@ class CycleTrackerCard extends HTMLElement {
     $('mFertLbl').textContent = det.fertLbl;
     $('mFertPct').textContent = det.fert + '%';
     setTimeout(() => { $('mFertBar').style.width = det.fert + '%'; }, 80);
-    $('mHormonal').textContent = det.hormonal;
-    $('mRecIco').textContent = det.recIco || '💡';
-    $('mRec').textContent = det.rec;
+    $('mHormonal').textContent = getHormonalText(type, dic);
+    const modalRec = getModalRec(type, dic);
+    $('mRecIco').textContent = modalRec.ico;
+    $('mRec').textContent = modalRec.text;
 
     $('modalOverlay').classList.add('open');
   }
