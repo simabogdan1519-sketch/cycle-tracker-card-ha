@@ -976,42 +976,52 @@ class CycleTrackerCard extends HTMLElement {
     const avg = histAttrs.avg_cycle_length || 28;
     if (avgEl) avgEl.textContent = `Medie: ${avg} zile`;
 
-    const sorted = [...history].sort((a,b) => new Date(b.date||b) - new Date(a.date||a));
-    if (!sorted.length) { barsEl.innerHTML = '<div class="sym-no">Adaugă cicluri din panoul ⚙️ pentru statistici.</div>'; return; }
+    if (!history.length) {
+      barsEl.innerHTML = '<div class="sym-no">Adaugă cicluri din panoul ⚙️ pentru statistici.</div>';
+      return;
+    }
 
-    const lengths = [];
-    const allSorted = [...history].sort((a,b) => new Date(a.date||a)-new Date(b.date||b));
+    const allSorted = [...history].sort((a,b) => new Date(a.date||a) - new Date(b.date||b));
+    const rows = [];
+
+    // Cicluri trecute — diferența dintre date consecutive
     for (let i = 1; i < allSorted.length; i++) {
-      const d1 = new Date(allSorted[i-1].date||allSorted[i-1]);
-      const d2 = new Date(allSorted[i].date||allSorted[i]);
-      const diff = Math.round((d2-d1)/86400000);
-      if (diff >= 15 && diff <= 50) {
-        const mo = d1.toLocaleString('ro',{month:'short', year:'2-digit'});
-        lengths.push({ label: mo, len: diff, isCur: i === allSorted.length-1 });
-      }
-    }
-    // Adaugă ciclul curent (în curs)
-    if (allSorted.length >= 1) {
-      const last = new Date(allSorted[allSorted.length-1].date||allSorted[allSorted.length-1]);
-      const today = new Date(); today.setHours(0,0,0,0);
-      const curLen = Math.round((today-last)/86400000)+1;
-      if (curLen >= 1 && curLen <= 60) {
-        lengths.unshift({ label: 'Curent', len: curLen, isCur: true });
-      }
+      const d1 = new Date(allSorted[i-1].date || allSorted[i-1]);
+      const d2 = new Date(allSorted[i].date   || allSorted[i]);
+      const diff = Math.round((d2 - d1) / 86400000);
+      const mo = d1.toLocaleString('ro', {month:'short', year:'2-digit'});
+      rows.push({ label: mo, len: diff, isCur: false });
     }
 
-    const maxLen = Math.max(...lengths.map(x=>x.len), avg + 5);
-    const avgPct = (avg / maxLen * 100).toFixed(1);
+    // Ciclul curent (de la ultima dată până azi)
+    const lastEntry = allSorted[allSorted.length - 1];
+    const lastDate = new Date(lastEntry.date || lastEntry);
+    const today = new Date(); today.setHours(0,0,0,0);
+    const curLen = Math.round((today - lastDate) / 86400000) + 1;
+    if (curLen >= 1 && curLen <= 60) {
+      rows.unshift({ label: 'Curent', len: curLen, isCur: true });
+    }
 
-    barsEl.innerHTML = lengths.slice(0, 8).map(row => {
-      const pct = (row.len / maxLen * 100).toFixed(1);
+    if (!rows.length) {
+      barsEl.innerHTML = '<div class="sym-no">Un singur ciclu înregistrat — mai adaugă pentru comparație.</div>';
+      return;
+    }
+
+    const maxLen = Math.max(...rows.map(x => x.len), avg + 4, 35);
+    const avgPct = Math.min((avg / maxLen * 100), 98).toFixed(1);
+
+    barsEl.innerHTML = rows.slice(0, 8).map(row => {
+      const pct = Math.min((row.len / maxLen * 100), 100).toFixed(1);
+      const valStr = row.isCur ? `${row.len}z…` : `${row.len} z`;
+      const warning = !row.isCur && (row.len < 21 || row.len > 35)
+        ? ' style="color:rgba(240,192,96,0.8)"' : '';
       return `<div class="ibar-row">
         <div class="ibar-lbl">${row.label}</div>
         <div class="ibar-track">
           <div class="ibar-fill ${row.isCur?'cur':''}" style="width:${pct}%"></div>
           <div class="ibar-avg-line" style="left:${avgPct}%"></div>
         </div>
-        <div class="ibar-val">${row.isCur && row.label==='Curent'?row.len+'z…':row.len+' z'}</div>
+        <div class="ibar-val"${warning}>${valStr}</div>
       </div>`;
     }).join('');
   }
