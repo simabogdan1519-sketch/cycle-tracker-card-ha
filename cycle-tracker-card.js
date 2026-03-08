@@ -87,7 +87,7 @@ const PHASES = {
     name:'Luteală 🍂',
     bg:'linear-gradient(135deg,rgba(196,98,45,0.18),rgba(155,77,110,0.08))',
     br:'rgba(196,98,45,0.30)',
-    desc:'Corpul galben produce progesteron. Fix ~14 zile indiferent de lungimea ciclului.',
+    desc:'Progesteronul domină această fază — durează fix ~14 zile indiferent de lungimea ciclului.',
     recs:[
       {i:'🍫',t:'<strong>Pofte & PMS:</strong> Ciocolată neagră >70%, nuci, magneziu (300mg/zi).'},
       {i:'🌙',t:'<strong>Somn prioritar:</strong> Temperatura bazală crește ușor după ovulație.'},
@@ -110,7 +110,7 @@ const DAY_DETAILS = {
   'fert-low': { sticker:'💜', emoji:'💜', label:'Fertilă',             phaseIco:'🌸', recIco:'🥗',  color:'rgba(155,111,212,0.18)', border:'rgba(155,111,212,0.35)', hormonal:'Estrogenul e la nivel ridicat. Mucusul cervical devine mai fluid. Spermatozoizii pot supraviețui 3-5 zile.',                                                                         fert:45, fertLbl:'Înalt',        rec:'Fereastră fertilă activă. Mucusul cervical susține mobilitatea spermatozoizilor. Antioxidanți pentru calitatea ovulului.' },
   'fert-high':{ sticker:'💙', emoji:'💙', label:'Foarte fertilă',      phaseIco:'🔵', recIco:'🫐',  color:'rgba(107,143,232,0.18)', border:'rgba(107,143,232,0.38)', hormonal:'Vârf de estrogen iminent. LH începe să crească. Mucusul cervical e transparent și elastic — semn de fertilitate maximă apropiată.',                                                        fert:75, fertLbl:'Foarte înalt',  rec:'Una dintre cele mai fertile zile. Mucus cervical tip "albuș de ou" — semn că ovulația e la 1-2 zile distanță.' },
   peak:       { sticker:'✨', emoji:'✨', label:'Ovulație',             phaseIco:'🥚', recIco:'💪',  color:'rgba(77,200,240,0.18)',  border:'rgba(77,200,240,0.42)',  hormonal:'Vârf LH declanșează eliberarea ovulului. Temperatura bazală crește ușor. Ovulul e viabil 12-24 ore.',                                                                                    fert:98, fertLbl:'Maxim',         rec:'Fertilitate maximă — ~31-33% șanse de concepție. Performanță fizică și cognitivă la vârf. Energie și încredere crescute.' },
-  luteal:     { sticker:'🍂', emoji:'🍂', label:'Luteală',             phaseIco:'🌙', recIco:'🍫',  color:'rgba(196,98,45,0.15)',   border:'rgba(196,98,45,0.28)',   hormonal:'Corpul galben produce progesteron. Temperatura bazală rămâne ridicată. Dacă nu apare sarcina, progesteronul scade spre finalul fazei.',                                                       fert:3,  fertLbl:'Scăzut',       rec:'Prioritizează somnul și recuperarea. Magneziu pentru PMS, ciocolată neagră >70%. Jurnal pentru emoții.' },
+  luteal:     { sticker:'🍂', emoji:'🍂', label:'Luteală',             phaseIco:'🌙', recIco:'🍫',  color:'rgba(196,98,45,0.15)',   border:'rgba(196,98,45,0.28)',   hormonal:'Progesteronul domină această fază. Temperatura bazală rămâne ridicată. Dacă nu apare sarcina, nivelul hormonal scade treptat spre finalul fazei.',                                          fert:3,  fertLbl:'Scăzut',       rec:'Prioritizează somnul și recuperarea. Magneziu pentru PMS, ciocolată neagră >70%. Jurnal pentru emoții.' },
   normal:     { sticker:'🌿', emoji:'🌿', label:'Foliculară timpurie', phaseIco:'🌱', recIco:'💧',  color:'rgba(255,255,255,0.06)', border:'rgba(255,255,255,0.10)', hormonal:'Hormoni în tranziție. Corpul se pregătește pentru următoarea fază a ciclului.',                                                                                                                   fert:3,  fertLbl:'Scăzut',       rec:'Perioadă de tranziție. Menține un stil de viață echilibrat — hidratare, somn regulat, alimentație variată.' },
 };
 
@@ -214,11 +214,14 @@ class CycleTrackerCard extends HTMLElement {
         .cal-today-btn{background:rgba(91,200,184,0.10);border:1px solid rgba(91,200,184,0.20);border-radius:99px;padding:2px 9px;font-size:9px;color:var(--teal,#5BC8B8);cursor:pointer;font-family:'Nunito',sans-serif;transition:all .2s}
         .cal-today-btn:hover{background:rgba(91,200,184,0.22)}
 
-        /* Badge 🩷 zi ciclu */
-        .cd{position:relative}
-        .cd-badge{position:absolute;bottom:1px;right:2px;display:flex;flex-direction:column;align-items:center;line-height:1;pointer-events:none}
-        .cd-badge .heart{font-size:6px}
-        .cd-badge .znum{font-size:5px;font-weight:700}
+        /* Badge zi ciclu — colț dreapta sus, mai vizibil */
+        .cd{position:relative;overflow:hidden}
+        .cd-badge{position:absolute;top:2px;right:3px;font-size:7.5px;font-weight:700;line-height:1;pointer-events:none;opacity:0.75}
+        .cd.period .cd-badge{color:rgba(255,180,190,0.9)}
+        .cd.fert-low .cd-badge{color:rgba(196,160,240,0.9)}
+        .cd.fert-high .cd-badge{color:rgba(168,196,255,0.9)}
+        .cd.peak .cd-badge{color:rgba(126,232,255,0.95)}
+        .cd.normal .cd-badge{color:rgba(255,255,255,0.40)}
         .cd-date{pointer-events:none}
 
         /* Modal */
@@ -787,7 +790,7 @@ class CycleTrackerCard extends HTMLElement {
 
       const inCurrentCycle = hasData && date >= cycleStart && date <= cycleEnd;
       const badge = inCurrentCycle
-        ? `<span class="cd-badge"><span class="heart">🩷</span><span class="znum">z${dic}</span></span>`
+        ? `<span class="cd-badge">🩷${dic}</span>`
         : '';
 
       const dateStr = date.toISOString().split('T')[0];
@@ -974,7 +977,7 @@ class CycleTrackerCard extends HTMLElement {
     if (avgEl) avgEl.textContent = `Medie: ${avg} zile`;
 
     const sorted = [...history].sort((a,b) => new Date(b.date||b) - new Date(a.date||a));
-    if (sorted.length < 2) { barsEl.innerHTML = '<div class="sym-no">Adaugă cicluri pentru statistici.</div>'; return; }
+    if (!sorted.length) { barsEl.innerHTML = '<div class="sym-no">Adaugă cicluri din panoul ⚙️ pentru statistici.</div>'; return; }
 
     const lengths = [];
     const allSorted = [...history].sort((a,b) => new Date(a.date||a)-new Date(b.date||b));
