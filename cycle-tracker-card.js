@@ -129,7 +129,7 @@ class CycleTrackerCard extends HTMLElement {
       <style>
         @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;1,400&family=Nunito:wght@300;400;500;600;700&display=swap');
         *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-        :host{display:block;font-family:'Nunito',sans-serif}
+        :host{display:block;font-family:'Nunito',sans-serif;--teal:#5BC8B8;--rose:#E8607A;--lavender:#9B6FD4}
 
         .card{background:linear-gradient(170deg,#1c0e20 0%,#0f0b16 55%,#16091d 100%);border-radius:28px;border:1px solid rgba(232,96,122,0.13);overflow:hidden;color:#fff;position:relative;box-shadow:0 0 0 1px rgba(255,255,255,0.025) inset}
         .g1,.g2{position:absolute;border-radius:50%;pointer-events:none}
@@ -215,6 +215,52 @@ class CycleTrackerCard extends HTMLElement {
         .ib.wi{background:rgba(240,192,96,0.06);border-color:rgba(240,192,96,0.16)}
         .ib.wi strong{color:rgba(240,192,96,0.9)}
         .ie{font-size:11px;color:rgba(255,255,255,0.22);text-align:center;padding:6px 0}
+
+        /* ── Insights Carousel ── */
+        .icar{padding:0 16px 4px;position:relative;z-index:2}
+        .icar-hd{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
+        .icar-dots{display:flex;gap:6px;align-items:center}
+        .idot{width:6px;height:6px;border-radius:50%;background:rgba(255,255,255,0.15);cursor:pointer;transition:all .3s}
+        .idot.active{width:18px;border-radius:99px;background:var(--teal,#5BC8B8)}
+
+        .icar-wrap{display:flex;overflow:hidden;border-radius:16px}
+        .islide{min-width:100%;background:rgba(255,255,255,0.025);border:1px solid rgba(255,255,255,0.055);border-radius:16px;padding:14px;box-sizing:border-box;transition:transform .4s cubic-bezier(.4,0,.2,1)}
+        .isl-title{font-size:11px;font-weight:700;color:rgba(255,255,255,0.70);margin-bottom:3px}
+        .isl-sub{font-size:10px;color:rgba(255,255,255,0.30);margin-bottom:10px;line-height:1.5}
+        .isl-avg{font-size:13px;font-weight:700;color:var(--teal,#5BC8B8);margin-bottom:12px}
+
+        /* Trend chart SVG */
+        .isl-chart{width:100%;height:90px;position:relative;margin-bottom:6px}
+        .isl-chart svg{width:100%;height:100%}
+        .isl-legend{font-size:8.5px;color:rgba(255,255,255,0.22);display:flex;align-items:center;gap:5px;flex-wrap:wrap}
+        .isl-dot{width:7px;height:7px;border-radius:50%;display:inline-block;flex-shrink:0}
+
+        /* Bars (Cycle Length) */
+        .isl-bars{display:flex;flex-direction:column;gap:7px;max-height:160px;overflow-y:auto}
+        .ibar-row{display:flex;align-items:center;gap:8px}
+        .ibar-lbl{font-size:9px;color:rgba(255,255,255,0.35);width:68px;flex-shrink:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+        .ibar-track{flex:1;height:8px;background:rgba(255,255,255,0.06);border-radius:99px;overflow:hidden;position:relative}
+        .ibar-fill{height:100%;border-radius:99px;background:linear-gradient(90deg,#E8607A,#F0A060);transition:width .9s cubic-bezier(.4,0,.2,1)}
+        .ibar-fill.cur{background:linear-gradient(90deg,#5BC8B8,#6B8FE8)}
+        .ibar-val{font-size:9px;color:rgba(255,255,255,0.45);width:32px;text-align:right;flex-shrink:0}
+        .ibar-avg-line{position:absolute;top:0;height:100%;width:2px;background:rgba(255,255,255,0.30);border-radius:99px}
+
+        /* Symptoms */
+        .isl-sym-list{display:flex;flex-direction:column;gap:5px;margin-bottom:12px;max-height:120px;overflow-y:auto}
+        .sym-row{display:flex;align-items:center;gap:7px;padding:6px 9px;background:rgba(255,255,255,0.025);border-radius:10px;border:1px solid rgba(255,255,255,0.045)}
+        .sym-row-date{font-size:9px;color:rgba(255,255,255,0.35);width:60px;flex-shrink:0}
+        .sym-chips{display:flex;gap:4px;flex-wrap:wrap;flex:1}
+        .sym-chip{font-size:9px;padding:2px 7px;border-radius:99px;background:rgba(155,111,212,0.18);color:rgba(200,170,255,0.85);border:1px solid rgba(155,111,212,0.22)}
+        .sym-chip.crampe{background:rgba(232,96,122,0.18);color:rgba(255,160,180,0.85);border-color:rgba(232,96,122,0.22)}
+        .sym-chip.oboseala{background:rgba(107,143,232,0.18);color:rgba(170,200,255,0.85);border-color:rgba(107,143,232,0.22)}
+        .sym-chip.cap{background:rgba(240,192,96,0.15);color:rgba(255,220,130,0.85);border-color:rgba(240,192,96,0.22)}
+        .sym-chip.mood{background:rgba(155,111,212,0.18);color:rgba(200,170,255,0.85);border-color:rgba(155,111,212,0.22)}
+        .isl-sym-log{border-top:1px solid rgba(255,255,255,0.05);padding-top:10px}
+        .sym-btns{display:flex;gap:6px;flex-wrap:wrap}
+        .sym-btn{background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:99px;padding:5px 10px;color:rgba(255,255,255,0.40);font-size:10px;font-family:'Nunito',sans-serif;cursor:pointer;transition:all .2s}
+        .sym-btn:hover{border-color:rgba(155,111,212,0.40);color:rgba(255,255,255,0.75)}
+        .sym-btn.active{background:rgba(155,111,212,0.22);border-color:rgba(155,111,212,0.45);color:#fff}
+        .sym-no{font-size:10px;color:rgba(255,255,255,0.20);text-align:center;padding:8px 0}
 
         div.dv{height:1px;background:linear-gradient(90deg,transparent,rgba(255,255,255,0.05),transparent);margin:0 16px 12px}
 
@@ -331,9 +377,51 @@ class CycleTrackerCard extends HTMLElement {
 
         <div class="dv"></div>
 
-        <div class="ins">
-          <div class="ins-hd">✦ Insights inteligente</div>
-          <div id="insL"></div>
+        <!-- ══ INSIGHTS CAROUSEL ══ -->
+        <div class="icar">
+          <div class="icar-hd">
+            <span class="ins-hd">✦ Insights</span>
+            <div class="icar-dots" id="iDots">
+              <span class="idot active" data-idx="0"></span>
+              <span class="idot" data-idx="1"></span>
+              <span class="idot" data-idx="2"></span>
+            </div>
+          </div>
+
+          <div class="icar-wrap" id="iWrap">
+            <!-- Slide 0: Cycle Trends -->
+            <div class="islide" id="iSlide0">
+              <div class="isl-title">📈 Tendința ciclurilor</div>
+              <div class="isl-sub" id="iTrendSub">—</div>
+              <div class="isl-chart" id="iTrendChart"></div>
+              <div class="isl-legend">
+                <span class="isl-dot" style="background:#5BC8B8"></span>durata ciclului
+                <span style="margin-left:10px;color:rgba(255,255,255,0.22)">zona gri = normal (21–35 zile)</span>
+              </div>
+            </div>
+
+            <!-- Slide 1: Cycle Length bars -->
+            <div class="islide" id="iSlide1">
+              <div class="isl-title">📏 Durata ciclurilor</div>
+              <div class="isl-avg" id="iAvgLbl">Medie: — zile</div>
+              <div class="isl-bars" id="iBars"></div>
+            </div>
+
+            <!-- Slide 2: Symptoms -->
+            <div class="islide" id="iSlide2">
+              <div class="isl-title">🩺 Simptome</div>
+              <div class="isl-sym-list" id="iSymList"></div>
+              <div class="isl-sym-log">
+                <div class="isl-sub" style="margin-bottom:6px">Adaugă simptome pentru ciclul curent:</div>
+                <div class="sym-btns" id="symBtns">
+                  <button class="sym-btn" data-sym="crampe">😣 Crampe</button>
+                  <button class="sym-btn" data-sym="oboseala">😴 Oboseală</button>
+                  <button class="sym-btn" data-sym="cap">🤕 Cap</button>
+                  <button class="sym-btn" data-sym="mood">😢 Mood</button>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
 
         <div class="dv"></div>
@@ -397,6 +485,13 @@ class CycleTrackerCard extends HTMLElement {
       b.classList.add('active');
     }));
     this.shadowRoot.getElementById('inD').value = new Date().toISOString().split('T')[0];
+
+    // Init slide positions
+    setTimeout(() => {
+      this.shadowRoot.querySelectorAll('.islide').forEach((s, i) => {
+        s.style.transform = `translateX(${i * 100}%)`;
+      });
+    }, 0);
   }
 
   _updateFromHass() {
@@ -545,23 +640,222 @@ class CycleTrackerCard extends HTMLElement {
   }
 
   _renderInsights(sensors, history) {
-    const el=this.shadowRoot.getElementById('insL');
-    if(!el) return;
-    const attrs = sensors?.cycle_history?.attributes || {};
-    const count = attrs.history_count || history.length || 0;
-    if(!count){ el.innerHTML='<div class="ie">Înregistrează cicluri din ⚙️ pentru insights.</div>'; return; }
-    const avgLen = attrs.avg_cycle_length || 28;
-    const isIrreg = attrs.is_irregular || false;
-    const trend = attrs.trend || 'stable';
-    const items=[];
-    if(count>=2) items.push({w:false,t:`<strong>Durata medie:</strong> ${avgLen} zile, din ${count} cicluri înregistrate.`});
-    if(isIrreg) items.push({w:true,t:`<strong>Ciclu neregulat detectat.</strong> Variațiile depășesc 4 zile.`});
-    else if(count>=3) items.push({w:false,t:`✓ <strong>Ciclu regulat.</strong> Variațiile sunt în parametri normali.`});
-    if(trend==='longer')  items.push({w:true, t:`<strong>Tendință:</strong> ciclurile devin mai lungi recent.`});
-    if(trend==='shorter') items.push({w:true, t:`<strong>Tendință:</strong> ciclurile devin mai scurte recent.`});
-    if(trend==='stable'&&count>=4) items.push({w:false,t:`✓ <strong>Ciclu stabil</strong> în ultimele luni.`});
-    if(count>=5) items.push({w:false,t:`🏆 <strong>${count} cicluri înregistrate!</strong> Predicțiile sunt precise.`});
-    el.innerHTML=items.map(x=>`<div class="ib ${x.w?'wi':''}">${x.t}</div>`).join('');
+    this._renderTrendSlide(sensors, history);
+    this._renderBarsSlide(sensors, history);
+    this._renderSymptomsSlide(sensors);
+    if (!this._carouselInit) this._initCarousel();
+  }
+
+  _initCarousel() {
+    this._carouselInit = true;
+    this._carIdx = 0;
+    const wrap = this.shadowRoot.getElementById('iWrap');
+    const dots = this.shadowRoot.querySelectorAll('.idot');
+
+    // Touch/swipe
+    let tx = 0;
+    wrap.addEventListener('touchstart', e => { tx = e.touches[0].clientX; }, {passive:true});
+    wrap.addEventListener('touchend', e => {
+      const dx = e.changedTouches[0].clientX - tx;
+      if (Math.abs(dx) > 40) this._goSlide(this._carIdx + (dx < 0 ? 1 : -1));
+    }, {passive:true});
+
+    // Dot clicks
+    dots.forEach(d => d.addEventListener('click', () => this._goSlide(parseInt(d.dataset.idx))));
+  }
+
+  _goSlide(idx) {
+    const slides = this.shadowRoot.querySelectorAll('.islide');
+    idx = Math.max(0, Math.min(2, idx));
+    this._carIdx = idx;
+    slides.forEach((s, i) => { s.style.transform = `translateX(${(i - idx) * 100}%)`; });
+    this.shadowRoot.querySelectorAll('.idot').forEach((d, i) => d.classList.toggle('active', i === idx));
+  }
+
+  _renderTrendSlide(sensors, history) {
+    const sub = this.shadowRoot.getElementById('iTrendSub');
+    const chartEl = this.shadowRoot.getElementById('iTrendChart');
+    if (!sub || !chartEl) return;
+
+    const histAttrs = sensors?.cycle_history?.attributes || {};
+    const count = histAttrs.history_count || history.length || 0;
+    const avg = histAttrs.avg_cycle_length || 28;
+    const irreg = histAttrs.is_irregular || false;
+    const trend = histAttrs.trend || 'stable';
+
+    if (count < 2) {
+      sub.textContent = 'Adaugă cel puțin 2 cicluri pentru grafic.';
+      chartEl.innerHTML = '<svg><text x="50%" y="50%" text-anchor="middle" fill="rgba(255,255,255,0.18)" font-size="10" font-family=\'Nunito\'>Date insuficiente</text></svg>';
+      return;
+    }
+
+    const trendMsg = irreg ? '⚠️ Ciclu neregulat detectat' :
+      trend === 'longer' ? '↗ Ciclurile devin mai lungi recent' :
+      trend === 'shorter' ? '↘ Ciclurile devin mai scurte recent' :
+      `✓ Ciclu regulat · medie ${avg} zile`;
+    sub.textContent = trendMsg;
+
+    // Calculează lungimile din history
+    const sorted = [...history].sort((a,b) => new Date(a.date||a) - new Date(b.date||b));
+    const lens = [];
+    for (let i = 1; i < sorted.length; i++) {
+      const d1 = new Date((sorted[i-1].date||sorted[i-1]));
+      const d2 = new Date((sorted[i].date||sorted[i]));
+      const diff = Math.round((d2-d1)/86400000);
+      if (diff >= 15 && diff <= 50) lens.push({ len: diff, date: sorted[i-1].date||sorted[i-1] });
+    }
+    if (!lens.length) { chartEl.innerHTML = ''; return; }
+
+    const W = 260, H = 88;
+    const minV = Math.min(15, ...lens.map(x=>x.len));
+    const maxV = Math.max(40, ...lens.map(x=>x.len));
+    const pad = 18;
+    const xStep = lens.length > 1 ? (W - pad*2) / (lens.length - 1) : W - pad*2;
+
+    const toY = v => H - pad - ((v - minV) / (maxV - minV)) * (H - pad*2);
+    const toX = i => pad + i * xStep;
+
+    // Normal zone (21-35)
+    const y1 = toY(35), y2 = toY(21);
+
+    let path = '', area = '';
+    lens.forEach((p, i) => {
+      const x = toX(i), y = toY(p.len);
+      path += i === 0 ? `M${x},${y}` : ` L${x},${y}`;
+      area += i === 0 ? `M${x},${y}` : ` L${x},${y}`;
+    });
+    const firstX = toX(0), lastX = toX(lens.length-1);
+    area += ` L${lastX},${H} L${firstX},${H} Z`;
+
+    const points = lens.map((p,i)=>{
+      const mo = new Date(p.date).toLocaleString('ro',{month:'short'});
+      return `<circle cx="${toX(i)}" cy="${toY(p.len)}" r="3.5" fill="#5BC8B8" stroke="rgba(18,10,22,.8)" stroke-width="1.5"/>
+              <text x="${toX(i)}" y="${toY(p.len)-7}" text-anchor="middle" fill="rgba(255,255,255,0.55)" font-size="8" font-family="Nunito">${p.len}</text>`;
+    }).join('');
+
+    const moLabels = lens.filter((_,i)=> lens.length<=6 || i%(Math.ceil(lens.length/4))===0)
+      .map(p => {
+        const i = lens.indexOf(p);
+        const mo = new Date(p.date).toLocaleString('ro',{month:'short'});
+        return `<text x="${toX(i)}" y="${H+2}" text-anchor="middle" fill="rgba(255,255,255,0.20)" font-size="7.5" font-family="Nunito">${mo}</text>`;
+      }).join('');
+
+    chartEl.innerHTML = `<svg viewBox="0 0 ${W} ${H+10}" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <linearGradient id="areaGrad" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="#5BC8B8" stop-opacity=".18"/>
+          <stop offset="100%" stop-color="#5BC8B8" stop-opacity=".02"/>
+        </linearGradient>
+      </defs>
+      <rect x="${pad}" y="${y1}" width="${W-pad*2}" height="${y2-y1}" fill="rgba(255,255,255,0.04)" rx="3"/>
+      <path d="${area}" fill="url(#areaGrad)"/>
+      <path d="${path}" fill="none" stroke="#5BC8B8" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+      ${points}
+      ${moLabels}
+    </svg>`;
+  }
+
+  _renderBarsSlide(sensors, history) {
+    const barsEl = this.shadowRoot.getElementById('iBars');
+    const avgEl  = this.shadowRoot.getElementById('iAvgLbl');
+    if (!barsEl) return;
+
+    const histAttrs = sensors?.cycle_history?.attributes || {};
+    const avg = histAttrs.avg_cycle_length || 28;
+    if (avgEl) avgEl.textContent = `Medie: ${avg} zile`;
+
+    const sorted = [...history].sort((a,b) => new Date(b.date||b) - new Date(a.date||a));
+    if (sorted.length < 2) { barsEl.innerHTML = '<div class="sym-no">Adaugă cicluri pentru statistici.</div>'; return; }
+
+    const lengths = [];
+    const allSorted = [...history].sort((a,b) => new Date(a.date||a)-new Date(b.date||b));
+    for (let i = 1; i < allSorted.length; i++) {
+      const d1 = new Date(allSorted[i-1].date||allSorted[i-1]);
+      const d2 = new Date(allSorted[i].date||allSorted[i]);
+      const diff = Math.round((d2-d1)/86400000);
+      if (diff >= 15 && diff <= 50) {
+        const mo = d1.toLocaleString('ro',{month:'short', year:'2-digit'});
+        lengths.push({ label: mo, len: diff, isCur: i === allSorted.length-1 });
+      }
+    }
+    // Adaugă ciclul curent (în curs)
+    if (allSorted.length >= 1) {
+      const last = new Date(allSorted[allSorted.length-1].date||allSorted[allSorted.length-1]);
+      const today = new Date(); today.setHours(0,0,0,0);
+      const curLen = Math.round((today-last)/86400000)+1;
+      if (curLen >= 1 && curLen <= 60) {
+        lengths.unshift({ label: 'Curent', len: curLen, isCur: true });
+      }
+    }
+
+    const maxLen = Math.max(...lengths.map(x=>x.len), avg + 5);
+    const avgPct = (avg / maxLen * 100).toFixed(1);
+
+    barsEl.innerHTML = lengths.slice(0, 8).map(row => {
+      const pct = (row.len / maxLen * 100).toFixed(1);
+      return `<div class="ibar-row">
+        <div class="ibar-lbl">${row.label}</div>
+        <div class="ibar-track">
+          <div class="ibar-fill ${row.isCur?'cur':''}" style="width:${pct}%"></div>
+          <div class="ibar-avg-line" style="left:${avgPct}%"></div>
+        </div>
+        <div class="ibar-val">${row.isCur && row.label==='Curent'?row.len+'z…':row.len+' z'}</div>
+      </div>`;
+    }).join('');
+  }
+
+  _renderSymptomsSlide(sensors) {
+    const listEl = this.shadowRoot.getElementById('iSymList');
+    const btnsEl = this.shadowRoot.getElementById('symBtns');
+    if (!listEl) return;
+
+    // Citește simptomele din localStorage (sunt per card, nu în HA senzori)
+    const SYM_KEY = 'ct_symptoms_v1';
+    let symData = {};
+    try { symData = JSON.parse(localStorage.getItem(SYM_KEY)||'{}'); } catch {}
+
+    const history = this._parseHAHistory(sensors);
+    const sorted = [...history].sort((a,b) => new Date(b.date||b)-new Date(a.date||a)).slice(0,6);
+
+    const symNames = { crampe:'😣 Crampe', oboseala:'😴 Oboseală', cap:'🤕 Cap', mood:'😢 Mood' };
+
+    if (!sorted.length) {
+      listEl.innerHTML = '<div class="sym-no">Adaugă cicluri pentru a loga simptome.</div>';
+    } else {
+      listEl.innerHTML = sorted.map(entry => {
+        const dateKey = entry.date||entry;
+        const syms = symData[dateKey] || [];
+        const dateStr = new Date(dateKey).toLocaleString('ro',{day:'numeric',month:'short'});
+        const chips = syms.length
+          ? syms.map(s=>`<span class="sym-chip ${s}">${symNames[s]||s}</span>`).join('')
+          : '<span style="font-size:9px;color:rgba(255,255,255,0.18)">—</span>';
+        return `<div class="sym-row"><div class="sym-row-date">${dateStr}</div><div class="sym-chips">${chips}</div></div>`;
+      }).join('');
+    }
+
+    // Butonele de logare pentru ciclul curent
+    if (!btnsEl) return;
+    const allSorted = [...history].sort((a,b)=>new Date(b.date||b)-new Date(a.date||a));
+    const curDate = allSorted[0]?.date || allSorted[0];
+    if (!curDate) return;
+    const curSyms = symData[curDate] || [];
+
+    btnsEl.querySelectorAll('.sym-btn').forEach(btn => {
+      btn.classList.toggle('active', curSyms.includes(btn.dataset.sym));
+      btn.onclick = () => {
+        let data = {};
+        try { data = JSON.parse(localStorage.getItem(SYM_KEY)||'{}'); } catch {}
+        const arr = data[curDate] || [];
+        const sym = btn.dataset.sym;
+        const idx = arr.indexOf(sym);
+        if (idx >= 0) arr.splice(idx,1); else arr.push(sym);
+        data[curDate] = arr;
+        try { localStorage.setItem(SYM_KEY, JSON.stringify(data)); } catch {}
+        btn.classList.toggle('active', arr.includes(sym));
+        this._renderSymptomsSlide(this._lastSensors);
+        this._showToast(arr.includes(sym) ? `✓ ${symNames[sym]} adăugat` : `Șters`);
+      };
+    });
   }
 
   _renderHistory(history) {
