@@ -1,10 +1,6 @@
-// cycle-tracker-card.js v3
+// cycle-tracker-card.js v4
 // Lovelace Custom Card – Cycle Tracker
-// Paleta lunară · Calendar 100% din senzori HA · Wilcox et al. BMJ 2000
-
-const HIST_KEY = 'cycle_tracker_history_v1';
-function loadHistory() { try { return JSON.parse(localStorage.getItem(HIST_KEY) || '[]'); } catch { return []; } }
-function saveHistory(h) { try { localStorage.setItem(HIST_KEY, JSON.stringify(h)); } catch {} }
+// v4: istoricul salvat în HA prin servicii (add_past_cycle / delete_cycle)
 
 function smartLen(history, haLen) {
   if (history.length < 2) return haLen || 28;
@@ -248,8 +244,10 @@ class CycleTrackerCard extends HTMLElement {
         .inp:focus{border-color:rgba(232,96,122,.42)}
         .inp::-webkit-calendar-picker-indicator{filter:invert(1) opacity(.3)}
         .sbtn{width:100%;margin-top:12px;background:linear-gradient(135deg,#E8607A,#9B4D6E);border:none;border-radius:12px;padding:11px;color:#fff;font-size:13px;font-weight:600;font-family:'Nunito',sans-serif;cursor:pointer;transition:opacity .2s}
-        .sbtn:hover{opacity:.86}
-        .sbtn:disabled{opacity:.4;cursor:not-allowed}
+        .dur-btn{background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.08);border-radius:9px;padding:6px 10px;color:rgba(255,255,255,0.40);font-size:12px;font-family:'Nunito',sans-serif;cursor:pointer;transition:all .2s}
+        .dur-btn.active{background:rgba(232,96,122,0.20);border-color:rgba(232,96,122,0.45);color:#fff;font-weight:600}
+        .flux-btn{background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.07);border-radius:10px;padding:7px 10px;color:rgba(255,255,255,0.35);font-size:10px;font-family:'Nunito',sans-serif;cursor:pointer;transition:all .2s;flex:1}
+        .flux-btn.active{background:rgba(232,96,122,0.18);border-color:rgba(232,96,122,0.42);color:#fff;font-weight:600}
 
         .toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%) translateY(14px);background:rgba(18,10,22,.96);border:1px solid rgba(91,200,184,.28);border-radius:11px;padding:8px 18px;font-size:12px;color:#fff;opacity:0;transition:all .3s;pointer-events:none;z-index:9999}
         .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
@@ -348,14 +346,37 @@ class CycleTrackerCard extends HTMLElement {
 
         <div class="ip">
           <button class="iptog" id="iptog">
-            <span>⚙️ Înregistrează ciclu nou</span>
+            <span>⚙️ Ciclu curent</span>
             <span class="ia" id="iArr">▼</span>
           </button>
           <div class="ipbody" id="iBody">
-            <div class="inp-info">Selectează prima zi a ultimei menstruații. Durata ciclului și a perioadei se preiau automat din configurarea Home Assistant.</div>
-            <div class="lbl">Prima zi a ultimei menstruații</div>
+            <div class="inp-info">Selectează prima zi a ciclului curent. Durata și fluxul se preiau din setări.</div>
+            <div class="lbl">Prima zi a menstruației</div>
             <input type="date" class="inp" id="inD"/>
             <button class="sbtn" id="saveBtn">💾 Salvează în Home Assistant</button>
+          </div>
+        </div>
+
+        <div class="ip" style="margin-top:8px">
+          <button class="iptog" id="pastTog">
+            <span>📅 Adaugă ciclu din trecut</span>
+            <span class="ia" id="pastArr">▼</span>
+          </button>
+          <div class="ipbody" id="pastBody">
+            <div class="inp-info">Introdu cicluri anterioare pentru a îmbunătăți precizia predicțiilor și media personalizată.</div>
+            <div class="lbl">Prima zi a menstruației (trecut)</div>
+            <input type="date" class="inp" id="pastDate"/>
+            <div class="lbl" style="margin-top:10px">Durata menstruației (zile)</div>
+            <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:5px">
+              ${[2,3,4,5,6,7,8].map(n=>`<button class="dur-btn${n===5?' active':''}" data-val="${n}">${n}${n===8?'+':''}</button>`).join('')}
+            </div>
+            <div class="lbl" style="margin-top:10px">Intensitate flux</div>
+            <div style="display:flex;gap:6px;margin-top:5px">
+              <button class="flux-btn" data-val="ușor">🩸 Ușor</button>
+              <button class="flux-btn active" data-val="mediu">🩸🩸 Mediu</button>
+              <button class="flux-btn" data-val="abundent">🩸🩸🩸 Abundent</button>
+            </div>
+            <button class="sbtn" id="pastSaveBtn" style="margin-top:12px">➕ Adaugă în istoric</button>
           </div>
         </div>
       </div>
@@ -365,6 +386,16 @@ class CycleTrackerCard extends HTMLElement {
     this.shadowRoot.getElementById('htog').addEventListener('click', () => this._toggleH());
     this.shadowRoot.getElementById('iptog').addEventListener('click', () => this._toggleI());
     this.shadowRoot.getElementById('saveBtn').addEventListener('click', () => this._saveCycle());
+    this.shadowRoot.getElementById('pastTog').addEventListener('click', () => this._togglePast());
+    this.shadowRoot.getElementById('pastSaveBtn').addEventListener('click', () => this._savePastCycle());
+    this.shadowRoot.querySelectorAll('.dur-btn').forEach(b => b.addEventListener('click', () => {
+      this.shadowRoot.querySelectorAll('.dur-btn').forEach(x=>x.classList.remove('active'));
+      b.classList.add('active');
+    }));
+    this.shadowRoot.querySelectorAll('.flux-btn').forEach(b => b.addEventListener('click', () => {
+      this.shadowRoot.querySelectorAll('.flux-btn').forEach(x=>x.classList.remove('active'));
+      b.classList.add('active');
+    }));
     this.shadowRoot.getElementById('inD').value = new Date().toISOString().split('T')[0];
   }
 
@@ -387,6 +418,7 @@ class CycleTrackerCard extends HTMLElement {
       next_period_date:  get('next_period_date'),
       ovulation_date:    get('ovulation_date'),
       cycle_progress:    get('cycle_progress'),
+      cycle_history:     get('cycle_history'),
     };
     this._lastSensors = sensors;
     this._setStatus(true, 'Home Assistant · conectat');
@@ -413,7 +445,10 @@ class CycleTrackerCard extends HTMLElement {
   _render(sensors) {
     const $ = id => this.shadowRoot.getElementById(id);
     if (!$('phN')) return;
-    const history = loadHistory();
+
+    // Istoricul vine din senzorul HA sensor.*_cycle_history
+    const haHistory = this._parseHAHistory(sensors);
+
     const haPhase = sensors?.cycle_phase?.state      || 'foliculara';
     const haDay   = parseInt(sensors?.cycle_day?.state || 1);
     const haFert  = sensors?.fertility_level?.state   || 'scazut';
@@ -422,13 +457,13 @@ class CycleTrackerCard extends HTMLElement {
     const haNext  = sensors?.next_period_date?.state;
     const haOvul  = sensors?.ovulation_date?.state;
     const attrs   = sensors?.cycle_day?.attributes || {};
-    const cLen    = attrs.cycle_length  || 28;
+    const histAttrs = sensors?.cycle_history?.attributes || {};
+    const cLen    = histAttrs.avg_cycle_length || attrs.cycle_length  || 28;
     const pLen    = attrs.period_length || 5;
     const ovDay   = attrs.ovulation_day || 14;
     const hasData = !!sensors?.cycle_day;
     const ph = PHASES[haPhase] || PHASES.foliculara;
     const fp = FERT_PCT[haFert] || 5;
-    const fl = FERT_LBL[haFert] || 'Scăzut';
 
     const hero = $('phHero');
     if (hero) { hero.style.background = hasData ? ph.bg : 'rgba(255,255,255,0.04)'; hero.style.borderColor = hasData ? ph.br : 'rgba(255,255,255,0.08)'; }
@@ -459,15 +494,22 @@ class CycleTrackerCard extends HTMLElement {
     $('sNext').textContent = haNext  ? fmtDate(new Date(haNext)) : '—';
 
     setTimeout(() => { const ff=$('ffill'); if(ff) ff.style.width = hasData ? fp+'%' : '0%'; }, 100);
-    $('fLbl').textContent = hasData ? fl : '—';
 
     this._buildCal(sensors, pLen, ovDay, haDay, hasData, cLen);
     $('recL').innerHTML = hasData
       ? ph.recs.map(r=>`<div class="rc"><div class="ri">${r.i}</div><div class="rt">${r.t}</div></div>`).join('')
       : '<div class="rc"><div class="rt" style="color:rgba(255,255,255,0.28)">Adaugă ciclul din panoul ⚙️ de mai jos.</div></div>';
-    this._renderInsights(history, cLen);
-    this._renderHistory(history);
-    $('hCnt').textContent = history.length;
+    this._renderInsights(sensors, haHistory);
+    this._renderHistory(haHistory);
+    if($('hCnt')) $('hCnt').textContent = haHistory.length;
+  }
+
+  _parseHAHistory(sensors) {
+    try {
+      const raw = sensors?.cycle_history?.attributes?.history;
+      if (!raw) return [];
+      return typeof raw === 'string' ? JSON.parse(raw) : (Array.isArray(raw) ? raw : []);
+    } catch { return []; }
   }
 
   _buildCal(sensors, pLen, ovDay, currentDay, hasData, cLen) {
@@ -502,20 +544,23 @@ class CycleTrackerCard extends HTMLElement {
     if($('calG')) $('calG').innerHTML=html;
   }
 
-  _renderInsights(history, haLen) {
+  _renderInsights(sensors, history) {
     const el=this.shadowRoot.getElementById('insL');
     if(!el) return;
-    if(!history.length){ el.innerHTML='<div class="ie">Înregistrează cicluri din ⚙️ pentru insights.</div>'; return; }
-    const sl=smartLen(history,haLen);
+    const attrs = sensors?.cycle_history?.attributes || {};
+    const count = attrs.history_count || history.length || 0;
+    if(!count){ el.innerHTML='<div class="ie">Înregistrează cicluri din ⚙️ pentru insights.</div>'; return; }
+    const avgLen = attrs.avg_cycle_length || 28;
+    const isIrreg = attrs.is_irregular || false;
+    const trend = attrs.trend || 'stable';
     const items=[];
-    if(history.length>=2){ const note=sl!==haLen?' (ajustat din istoric)':''; items.push({w:false,t:`<strong>Durata medie:</strong> ${sl} zile${note}, din ${history.length} cicluri.`}); }
-    if(isIrregular(history)) items.push({w:true,t:`<strong>Ciclu neregulat detectat.</strong> Variațiile depășesc 4 zile.`});
-    else if(history.length>=3) items.push({w:false,t:`✓ <strong>Ciclu regulat.</strong> Variațiile sunt în parametri normali.`});
-    const tr=trendDir(history);
-    if(tr==='longer')  items.push({w:true, t:`<strong>Tendință:</strong> ciclurile devin mai lungi recent.`});
-    if(tr==='shorter') items.push({w:true, t:`<strong>Tendință:</strong> ciclurile devin mai scurte recent.`});
-    if(tr==='stable'&&history.length>=4) items.push({w:false,t:`✓ <strong>Ciclu stabil</strong> în ultimele luni.`});
-    if(history.length>=5) items.push({w:false,t:`🏆 <strong>${history.length} cicluri înregistrate!</strong> Predicțiile sunt precise.`});
+    if(count>=2) items.push({w:false,t:`<strong>Durata medie:</strong> ${avgLen} zile, din ${count} cicluri înregistrate.`});
+    if(isIrreg) items.push({w:true,t:`<strong>Ciclu neregulat detectat.</strong> Variațiile depășesc 4 zile.`});
+    else if(count>=3) items.push({w:false,t:`✓ <strong>Ciclu regulat.</strong> Variațiile sunt în parametri normali.`});
+    if(trend==='longer')  items.push({w:true, t:`<strong>Tendință:</strong> ciclurile devin mai lungi recent.`});
+    if(trend==='shorter') items.push({w:true, t:`<strong>Tendință:</strong> ciclurile devin mai scurte recent.`});
+    if(trend==='stable'&&count>=4) items.push({w:false,t:`✓ <strong>Ciclu stabil</strong> în ultimele luni.`});
+    if(count>=5) items.push({w:false,t:`🏆 <strong>${count} cicluri înregistrate!</strong> Predicțiile sunt precise.`});
     el.innerHTML=items.map(x=>`<div class="ib ${x.w?'wi':''}">${x.t}</div>`).join('');
   }
 
@@ -523,16 +568,34 @@ class CycleTrackerCard extends HTMLElement {
     const el=this.shadowRoot.getElementById('hList');
     if(!el) return;
     if(!history.length){ el.innerHTML='<div class="nh">Niciun ciclu înregistrat încă.</div>'; return; }
-    const sa=[...history].sort((a,b)=>new Date(a)-new Date(b));
-    el.innerHTML=[...sa].reverse().map(d=>{
-      const idx=sa.indexOf(d);
-      let ls='curent',lc='ok';
-      if(idx<sa.length-1){ const diff=Math.round((new Date(sa[idx+1])-new Date(d))/86400000); ls=diff+' zile'; lc=(diff>=21&&diff<=35)?'ok':''; }
-      return `<div class="hr"><span class="hrd">${fmtDateL(new Date(d))}</span><span class="hrl ${lc}">${ls}</span><button class="hdl" data-date="${d}">✕</button></div>`;
+    const sorted=[...history].sort((a,b)=>new Date(a.date)-new Date(b.date));
+    const fluxIco={ușor:'🩸',mediu:'🩸🩸',abundent:'🩸🩸🩸'};
+    el.innerHTML=[...sorted].reverse().map((entry)=>{
+      const idx=sorted.findIndex(x=>x.date===entry.date);
+      let tag='curent';
+      if(idx<sorted.length-1){
+        const diff=Math.round((new Date(sorted[idx+1].date)-new Date(entry.date))/86400000);
+        tag=diff+' zile ciclu';
+      }
+      const isPast=entry.source==='past';
+      return `<div class="hr">
+        <span class="hrd">${fmtDateL(new Date(entry.date))}</span>
+        <span style="font-size:9px;color:rgba(255,255,255,0.30)">${entry.dur||entry.period_length||5}z mens. ${fluxIco[entry.flux||entry.flow_intensity||'mediu']||'🩸🩸'}</span>
+        <span class="hrl">${tag}</span>
+        <button class="hdl" data-date="${entry.date}">✕</button>
+      </div>`;
     }).join('');
     el.querySelectorAll('.hdl').forEach(btn=>{
-      btn.addEventListener('click',()=>{ const h=loadHistory().filter(x=>x!==btn.dataset.date); saveHistory(h); this._render(this._lastSensors); this._showToast('🗑️ Șters'); });
+      btn.addEventListener('click', () => this._deleteCycle(btn.dataset.date));
     });
+  }
+
+  async _deleteCycle(date) {
+    if(!this._hass||!this._entryId) return;
+    try {
+      await this._hass.callService('cycle_tracker','delete_cycle',{ entry_id:this._entryId, date });
+      this._showToast('🗑️ Șters din HA');
+    } catch(e) { this._showToast('⚠️ Eroare la ștergere'); }
   }
 
   async _saveCycle() {
@@ -541,22 +604,57 @@ class CycleTrackerCard extends HTMLElement {
     if(!dv){ this._showToast('⚠️ Selectează o dată'); return; }
     const btn=$('saveBtn');
     btn.disabled=true; btn.textContent='Se salvează…';
-    const h=loadHistory();
-    if(!h.includes(dv)){ h.push(dv); saveHistory(h); }
-    const sl=smartLen(h, this._lastSensors?.cycle_day?.attributes?.cycle_length||28);
     const pLen=this._lastSensors?.cycle_day?.attributes?.period_length||5;
     let saved=false;
     if(this._hass&&this._entryId){
-      try{ await this._hass.callService('cycle_tracker','update_cycle',{ entry_id:this._entryId, cycle_start_date:dv, cycle_length:sl, period_length:pLen }); saved=true; }
-      catch(e){ console.warn('CycleTracker: callService error',e); }
+      try{
+        await this._hass.callService('cycle_tracker','update_cycle',{
+          entry_id:this._entryId,
+          cycle_start_date:dv,
+          period_length:pLen,
+          flow_intensity:'mediu',
+        });
+        saved=true;
+      } catch(e){ console.warn('CycleTracker: callService error',e); }
     }
     btn.disabled=false; btn.textContent='💾 Salvează în Home Assistant';
-    this._showToast(saved?'✅ Salvat în Home Assistant!':'💾 Salvat local (HA nu a răspuns)');
+    this._showToast(saved?'✅ Salvat în Home Assistant!':'⚠️ HA nu a răspuns');
     $('iBody').classList.remove('open'); $('iArr').classList.remove('open'); this._inpOpen=false;
+  }
+
+  async _savePastCycle() {
+    const $=id=>this.shadowRoot.getElementById(id);
+    const dv=$('pastDate').value;
+    if(!dv){ this._showToast('⚠️ Selectează o dată'); return; }
+    const btn=$('pastSaveBtn');
+    btn.disabled=true; btn.textContent='Se salvează…';
+    const dur = parseInt(this.shadowRoot.querySelector('.dur-btn.active')?.dataset?.val||5);
+    const flux = this.shadowRoot.querySelector('.flux-btn.active')?.dataset?.val||'mediu';
+    let saved=false;
+    if(this._hass&&this._entryId){
+      try{
+        await this._hass.callService('cycle_tracker','add_past_cycle',{
+          entry_id:this._entryId,
+          date:dv,
+          period_length:dur,
+          flow_intensity:flux,
+        });
+        saved=true;
+      } catch(e){ console.warn('CycleTracker: add_past_cycle error',e); }
+    }
+    btn.disabled=false; btn.textContent='➕ Adaugă în istoric';
+    this._showToast(saved?'➕ Adăugat în HA!':'⚠️ HA nu a răspuns');
+    if(saved){ $('pastDate').value=''; }
   }
 
   _toggleH(){ this._histOpen=!this._histOpen; this.shadowRoot.getElementById('hBody').classList.toggle('open',this._histOpen); this.shadowRoot.getElementById('hArr').classList.toggle('open',this._histOpen); }
   _toggleI(){ this._inpOpen=!this._inpOpen; this.shadowRoot.getElementById('iBody').classList.toggle('open',this._inpOpen); this.shadowRoot.getElementById('iArr').classList.toggle('open',this._inpOpen); }
+  _togglePast(){
+    const body=this.shadowRoot.getElementById('pastBody');
+    const arr=this.shadowRoot.getElementById('pastArr');
+    if(body) body.classList.toggle('open');
+    if(arr) arr.classList.toggle('open');
+  }
 
   _showToast(msg){ const t=this.shadowRoot.getElementById('toast'); if(!t) return; t.textContent=msg; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),3200); }
 }
