@@ -409,7 +409,7 @@ class CycleTrackerCard extends HTMLElement {
         <div class="frt">
           <div class="sl2">Nivelul de fertilitate estimat</div>
           <div class="fb"><div class="ff" id="ffill" style="width:0%"></div></div>
-          <div class="fl"><span>Scăzut</span><span id="fLbl">—</span><span>Maxim</span></div>
+          <div class="fl"><span>Scăzut</span><span>Moderat</span><span>Maxim</span></div>
         </div>
 
         <div class="cal">
@@ -433,8 +433,6 @@ class CycleTrackerCard extends HTMLElement {
           <div class="li"><div class="ld" style="background:#E8607A;box-shadow:0 0 0 2px rgba(232,96,122,.5)"></div>Azi</div>
           <div class="li"><span style="font-size:8px">🩷</span>= ziua ciclului</div>
         </div>
-
-        <div class="src">📚 Wilcox et al. BMJ 2000 · Johns Hopkins · ACOG</div>
 
         <div class="dv" style="margin-top:13px"></div>
 
