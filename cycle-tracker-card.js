@@ -99,8 +99,20 @@ const PHASES = {
 
 const MS = ['Ian','Feb','Mar','Apr','Mai','Iun','Iul','Aug','Sep','Oct','Nov','Dec'];
 const ML = ['Ianuarie','Februarie','Martie','Aprilie','Mai','Iunie','Iulie','August','Septembrie','Octombrie','Noiembrie','Decembrie'];
+const DAYS_RO = ['Duminică','Luni','Marți','Miercuri','Joi','Vineri','Sâmbătă'];
 function fmtDate(d) { return (!d||isNaN(d)) ? '—' : `${d.getDate()} ${MS[d.getMonth()]}`; }
 function fmtDateL(d) { return (!d||isNaN(d)) ? '—' : `${d.getDate()} ${ML[d.getMonth()]} ${d.getFullYear()}`; }
+function fmtDateFull(d) { return (!d||isNaN(d)) ? '—' : `${DAYS_RO[d.getDay()]}, ${d.getDate()} ${ML[d.getMonth()]} ${d.getFullYear()}`; }
+
+const DAY_DETAILS = {
+  period:     { sticker:'🩸', emoji:'🌹', label:'Menstruație',        phaseIco:'🌹', recIco:'🛁',  color:'rgba(232,96,122,0.18)',  border:'rgba(232,96,122,0.32)',  hormonal:'Estrogen și progesteron sunt la nivel minim. Uterul elimină mucoasa endometrială. FSH începe să crească ușor.',                                                                        fert:2,  fertLbl:'Scăzut',       rec:'Odihnă activă — yoga ușoară, stretching. Alimente bogate în fier (spanac, linte). Evită efortul intens.' },
+  foliculara: { sticker:'🌿', emoji:'🌱', label:'Foliculară',          phaseIco:'🌱', recIco:'🏃',  color:'rgba(91,200,184,0.14)',   border:'rgba(91,200,184,0.25)',  hormonal:'FSH stimulează creșterea foliculilor. Estrogenul crește progresiv, îmbunătățind energia, starea de spirit și claritatea mentală.',                                                   fert:5,  fertLbl:'Scăzut',       rec:'Energie în creștere — ideal pentru antrenamente de forță, proiecte noi și socializare. Consum de zinc și vitamina D.' },
+  'fert-low': { sticker:'💜', emoji:'💜', label:'Fertilă',             phaseIco:'🌸', recIco:'🥗',  color:'rgba(155,111,212,0.18)', border:'rgba(155,111,212,0.35)', hormonal:'Estrogenul e la nivel ridicat. Mucusul cervical devine mai fluid. Spermatozoizii pot supraviețui 3-5 zile.',                                                                         fert:45, fertLbl:'Înalt',        rec:'Fereastră fertilă activă. Mucusul cervical susține mobilitatea spermatozoizilor. Antioxidanți pentru calitatea ovulului.' },
+  'fert-high':{ sticker:'💙', emoji:'💙', label:'Foarte fertilă',      phaseIco:'🔵', recIco:'🫐',  color:'rgba(107,143,232,0.18)', border:'rgba(107,143,232,0.38)', hormonal:'Vârf de estrogen iminent. LH începe să crească. Mucusul cervical e transparent și elastic — semn de fertilitate maximă apropiată.',                                                        fert:75, fertLbl:'Foarte înalt',  rec:'Una dintre cele mai fertile zile. Mucus cervical tip "albuș de ou" — semn că ovulația e la 1-2 zile distanță.' },
+  peak:       { sticker:'✨', emoji:'✨', label:'Ovulație',             phaseIco:'🥚', recIco:'💪',  color:'rgba(77,200,240,0.18)',  border:'rgba(77,200,240,0.42)',  hormonal:'Vârf LH declanșează eliberarea ovulului. Temperatura bazală crește ușor. Ovulul e viabil 12-24 ore.',                                                                                    fert:98, fertLbl:'Maxim',         rec:'Fertilitate maximă — ~31-33% șanse de concepție. Performanță fizică și cognitivă la vârf. Energie și încredere crescute.' },
+  luteal:     { sticker:'🍂', emoji:'🍂', label:'Luteală',             phaseIco:'🌙', recIco:'🍫',  color:'rgba(196,98,45,0.15)',   border:'rgba(196,98,45,0.28)',   hormonal:'Corpul galben produce progesteron. Temperatura bazală rămâne ridicată. Dacă nu apare sarcina, progesteronul scade spre finalul fazei.',                                                       fert:3,  fertLbl:'Scăzut',       rec:'Prioritizează somnul și recuperarea. Magneziu pentru PMS, ciocolată neagră >70%. Jurnal pentru emoții.' },
+  normal:     { sticker:'🌿', emoji:'🌿', label:'Foliculară timpurie', phaseIco:'🌱', recIco:'💧',  color:'rgba(255,255,255,0.06)', border:'rgba(255,255,255,0.10)', hormonal:'Hormoni în tranziție. Corpul se pregătește pentru următoarea fază a ciclului.',                                                                                                                   fert:3,  fertLbl:'Scăzut',       rec:'Perioadă de tranziție. Menține un stil de viață echilibrat — hidratare, somn regulat, alimentație variată.' },
+};
 
 class CycleTrackerCard extends HTMLElement {
   constructor() {
@@ -190,9 +202,53 @@ class CycleTrackerCard extends HTMLElement {
         .cd.fert-low {background:rgba(155,111,212,0.28);color:#C4A0F0;font-weight:500}
         .cd.fert-high{background:rgba(107,143,232,0.32);color:#A8C4FF;font-weight:600}
         .cd.peak     {background:rgba(77,200,240,0.34);color:#7EE8FF;font-weight:700;border:1px solid rgba(77,200,240,0.45);box-shadow:0 0 10px rgba(77,200,240,0.18)}
-        .cd.luteal   {background:rgba(196,98,45,0.22);color:rgba(255,160,100,0.75)}
+        .cd.luteal   {background:rgba(255,255,255,0.028);color:rgba(255,255,255,0.26)}
         .cd.today    {box-shadow:0 0 0 2px #E8607A}
         .cd.peak.today{box-shadow:0 0 0 2px #E8607A,0 0 10px rgba(77,200,240,0.18)}
+
+        /* Calendar nav */
+        .cal-nav{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+        .cal-nav-btn{background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.09);border-radius:8px;color:rgba(255,255,255,0.5);font-size:14px;width:28px;height:28px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .2s}
+        .cal-nav-btn:hover{background:rgba(232,96,122,0.18);color:#fff;border-color:rgba(232,96,122,0.3)}
+        .cal-month{font-size:11px;font-weight:600;color:rgba(255,255,255,0.55)}
+        .cal-today-btn{background:rgba(91,200,184,0.10);border:1px solid rgba(91,200,184,0.20);border-radius:99px;padding:2px 9px;font-size:9px;color:var(--teal,#5BC8B8);cursor:pointer;font-family:'Nunito',sans-serif;transition:all .2s}
+        .cal-today-btn:hover{background:rgba(91,200,184,0.22)}
+
+        /* Badge 🩷 zi ciclu */
+        .cd{position:relative}
+        .cd-badge{position:absolute;bottom:1px;right:2px;display:flex;flex-direction:column;align-items:center;line-height:1;pointer-events:none}
+        .cd-badge .heart{font-size:6px}
+        .cd-badge .znum{font-size:5px;font-weight:700}
+        .cd-date{pointer-events:none}
+
+        /* Modal */
+        .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.75);backdrop-filter:blur(10px);z-index:9999;display:flex;align-items:flex-end;justify-content:center;opacity:0;pointer-events:none;transition:opacity .28s}
+        .modal-overlay.open{opacity:1;pointer-events:all}
+        .modal{background:linear-gradient(160deg,#1e0f26 0%,#12091a 100%);border:1px solid rgba(255,255,255,0.07);border-bottom:none;border-radius:32px 32px 0 0;width:100%;max-width:430px;padding:0 0 36px;transform:translateY(32px);transition:transform .35s cubic-bezier(.34,1.1,.64,1)}
+        .modal-overlay.open .modal{transform:translateY(0)}
+        .modal-handle{width:40px;height:4px;background:rgba(255,255,255,0.10);border-radius:99px;margin:14px auto 0}
+        .modal-hero{position:relative;padding:20px 20px 0;display:flex;align-items:flex-start;gap:14px}
+        .modal-sticker{width:64px;height:64px;border-radius:20px;display:flex;align-items:center;justify-content:center;font-size:32px;flex-shrink:0;border:1px solid transparent;transition:background .4s}
+        .modal-hero-text{flex:1;min-width:0}
+        .modal-date{font-size:9.5px;letter-spacing:1.3px;text-transform:uppercase;color:rgba(255,255,255,0.28);margin-bottom:3px}
+        .modal-title{font-family:'Playfair Display',serif;font-size:21px;color:#fff;line-height:1.1}
+        .modal-phase-pill{display:inline-flex;align-items:center;gap:5px;border-radius:99px;padding:3px 10px;font-size:10px;font-weight:600;margin-top:6px;border:1px solid transparent}
+        .modal-close{position:absolute;top:20px;right:20px;background:rgba(255,255,255,0.055);border:1px solid rgba(255,255,255,0.07);border-radius:50%;width:28px;height:28px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:12px;color:rgba(255,255,255,0.35);transition:all .2s}
+        .modal-close:hover{background:rgba(232,96,122,0.20);color:#fff}
+        .modal-chips{display:flex;gap:7px;padding:14px 20px 0;flex-wrap:wrap}
+        .mchip{background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.07);border-radius:14px;padding:9px 12px;display:flex;align-items:center;gap:8px;flex:1;min-width:80px}
+        .fert-chip{flex:2}
+        .mchip-ico{font-size:15px;flex-shrink:0}
+        .mchip-val{font-size:13px;font-weight:600;color:#fff;line-height:1}
+        .mchip-lbl{font-size:8.5px;color:rgba(255,255,255,0.25);margin-top:2px}
+        .mchip-txt{flex:1;min-width:0}
+        .mfert-bar{height:4px;background:rgba(255,255,255,0.07);border-radius:99px;margin-top:5px;overflow:hidden}
+        .mfert-fill{height:100%;border-radius:99px;background:linear-gradient(90deg,#5BC8B8,#F0C060);transition:width 1s cubic-bezier(.4,0,.2,1)}
+        .modal-sections{display:flex;flex-direction:column;gap:8px;padding:10px 20px 0}
+        .msec{background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.055);border-radius:16px;padding:13px;display:flex;gap:11px;align-items:flex-start}
+        .msec-icon{font-size:18px;flex-shrink:0;margin-top:1px}
+        .msec-title{font-size:10px;font-weight:700;color:rgba(255,255,255,0.45);text-transform:uppercase;letter-spacing:.8px;margin-bottom:5px}
+        .msec-text{font-size:11.5px;color:rgba(255,255,255,0.60);line-height:1.65}
 
         .leg{display:flex;gap:7px;flex-wrap:wrap;padding:9px 16px 0;position:relative;z-index:2}
         .li{display:flex;align-items:center;gap:4px;font-size:8.5px;color:rgba(255,255,255,0.32)}
@@ -353,7 +409,15 @@ class CycleTrackerCard extends HTMLElement {
         </div>
 
         <div class="cal">
-          <div class="sl2">Calendar – luna curentă</div>
+          <div class="sl2">Calendar</div>
+          <div class="cal-nav">
+            <button class="cal-nav-btn" id="calPrev">‹</button>
+            <div style="display:flex;align-items:center;gap:8px">
+              <span class="cal-month" id="calMonth">—</span>
+              <button class="cal-today-btn" id="calTodayBtn">azi</button>
+            </div>
+            <button class="cal-nav-btn" id="calNext">›</button>
+          </div>
           <div class="cg" id="calG"></div>
         </div>
 
@@ -362,8 +426,8 @@ class CycleTrackerCard extends HTMLElement {
           <div class="li"><div class="ld" style="background:#9B6FD4"></div>Fertilă</div>
           <div class="li"><div class="ld" style="background:#6B8FE8"></div>Foarte fertilă</div>
           <div class="li"><div class="ld" style="background:#4DC8F0"></div>Ovulație</div>
-          <div class="li"><div class="ld" style="background:#C4622D"></div>Luteală</div>
           <div class="li"><div class="ld" style="background:#E8607A;box-shadow:0 0 0 2px rgba(232,96,122,.5)"></div>Azi</div>
+          <div class="li"><span style="font-size:8px">🩷</span>= ziua ciclului</div>
         </div>
 
         <div class="src">📚 Wilcox et al. BMJ 2000 · Johns Hopkins · ACOG</div>
@@ -468,6 +532,64 @@ class CycleTrackerCard extends HTMLElement {
           </div>
         </div>
       </div>
+      <div class="modal-overlay" id="modalOverlay">
+        <div class="modal">
+          <div class="modal-handle"></div>
+          <div class="modal-hero">
+            <div class="modal-sticker" id="mSticker">🌹</div>
+            <div class="modal-hero-text">
+              <div class="modal-date" id="mDate">—</div>
+              <div class="modal-title" id="mTitle">—</div>
+              <div class="modal-phase-pill" id="mPill">—</div>
+            </div>
+            <div class="modal-close" id="mClose">✕</div>
+          </div>
+          <div class="modal-chips">
+            <div class="mchip">
+              <div class="mchip-ico">📅</div>
+              <div class="mchip-txt">
+                <div class="mchip-val" id="mCycleDay">—</div>
+                <div class="mchip-lbl">ziua ciclului</div>
+              </div>
+            </div>
+            <div class="mchip">
+              <div class="mchip-ico" id="mPhaseIco">🌿</div>
+              <div class="mchip-txt">
+                <div class="mchip-val" id="mPhase">—</div>
+                <div class="mchip-lbl">faza</div>
+              </div>
+            </div>
+            <div class="mchip fert-chip">
+              <div class="mchip-ico">🌡️</div>
+              <div class="mchip-txt" style="flex:1">
+                <div style="display:flex;justify-content:space-between;align-items:center">
+                  <div class="mchip-val" id="mFertLbl">—</div>
+                  <div style="font-size:10px;color:rgba(255,255,255,0.35)" id="mFertPct">—</div>
+                </div>
+                <div class="mchip-lbl">fertilitate</div>
+                <div class="mfert-bar"><div class="mfert-fill" id="mFertBar" style="width:0%"></div></div>
+              </div>
+            </div>
+          </div>
+          <div class="modal-sections">
+            <div class="msec">
+              <div class="msec-icon">🧬</div>
+              <div class="msec-body">
+                <div class="msec-title">Ce se întâmplă hormonal</div>
+                <div class="msec-text" id="mHormonal">—</div>
+              </div>
+            </div>
+            <div class="msec">
+              <div class="msec-icon" id="mRecIco">💡</div>
+              <div class="msec-body">
+                <div class="msec-title">Recomandare pentru azi</div>
+                <div class="msec-text" id="mRec">—</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <div class="toast" id="toast"></div>
     `;
 
@@ -485,6 +607,17 @@ class CycleTrackerCard extends HTMLElement {
       b.classList.add('active');
     }));
     this.shadowRoot.getElementById('inD').value = new Date().toISOString().split('T')[0];
+
+    // Modal listeners
+    const overlay = this.shadowRoot.getElementById('modalOverlay');
+    overlay.addEventListener('click', e => { if(e.target===overlay) this._closeModal(); });
+    this.shadowRoot.getElementById('mClose').addEventListener('click', () => this._closeModal());
+
+    // Calendar nav
+    this._calOffset = 0;
+    this.shadowRoot.getElementById('calPrev').addEventListener('click', () => { this._calOffset--; this._buildCal(this._lastSensors, this._calPLen||5, this._calOvDay||14, this._calDay||1, this._calHasData||false, this._calCLen||28); });
+    this.shadowRoot.getElementById('calNext').addEventListener('click', () => { this._calOffset++; this._buildCal(this._lastSensors, this._calPLen||5, this._calOvDay||14, this._calDay||1, this._calHasData||false, this._calCLen||28); });
+    this.shadowRoot.getElementById('calTodayBtn').addEventListener('click', () => { this._calOffset=0; this._buildCal(this._lastSensors, this._calPLen||5, this._calOvDay||14, this._calDay||1, this._calHasData||false, this._calCLen||28); });
 
     // Init slide positions
     setTimeout(() => {
@@ -609,34 +742,110 @@ class CycleTrackerCard extends HTMLElement {
 
   _buildCal(sensors, pLen, ovDay, currentDay, hasData, cLen) {
     const $ = id => this.shadowRoot.getElementById(id);
+    if (!this._calOffset) this._calOffset = 0;
+    // Store for nav buttons
+    this._calPLen = pLen; this._calOvDay = ovDay; this._calDay = currentDay;
+    this._calHasData = hasData; this._calCLen = cLen;
+
     const heads = ['Lu','Ma','Mi','Jo','Vi','Sâ','Du'];
     let html = heads.map(d=>`<div class="ch">${d}</div>`).join('');
-    const today = new Date(); today.setHours(0,0,0,0);
-    const year=today.getFullYear(), month=today.getMonth();
-    const fom=new Date(year,month,1);
-    let sw=fom.getDay(); sw=sw===0?6:sw-1;
-    for(let i=0;i<sw;i++) html+=`<div class="cd em"></div>`;
-    const dim=new Date(year,month+1,0).getDate();
-    const cycleStart=new Date(today); cycleStart.setDate(today.getDate()-currentDay+1);
 
-    for(let d=1;d<=dim;d++){
-      const date=new Date(year,month,d);
-      const isToday=d===today.getDate();
-      const diff=Math.floor((date-cycleStart)/86400000);
-      const norm=((diff%cLen)+cLen)%cLen;
-      const dic=norm+1;
-      let cls='normal';
-      if(hasData){
-        if(dic>=1&&dic<=pLen)              cls='period';
-        else if(dic===ovDay||dic===ovDay-1) cls='peak';
-        else if(dic===ovDay-2)             cls='fert-high';
-        else if(dic>=ovDay-5&&dic<=ovDay-3) cls='fert-low';
-        else if(dic>ovDay)                 cls='luteal';
-      }
-      if(isToday) cls+=' today';
-      html+=`<div class="cd ${cls}">${d}</div>`;
+    const today = new Date(); today.setHours(0,0,0,0);
+    const dispDate = new Date(today.getFullYear(), today.getMonth() + this._calOffset, 1);
+    const year = dispDate.getFullYear(), month = dispDate.getMonth();
+
+    // Update month label
+    const monthEl = $('calMonth');
+    if (monthEl) monthEl.textContent = `${ML[month]} ${year}`;
+
+    const fom = new Date(year, month, 1);
+    let sw = fom.getDay(); sw = sw===0 ? 6 : sw-1;
+    for (let i=0; i<sw; i++) html += `<div class="cd em"></div>`;
+
+    const dim = new Date(year, month+1, 0).getDate();
+    const cycleStart = new Date(today); cycleStart.setDate(today.getDate() - currentDay + 1);
+    const cycleEnd = new Date(cycleStart); cycleEnd.setDate(cycleStart.getDate() + cLen - 1);
+
+    const getDayType = (dic) => {
+      if (dic >= 1 && dic <= pLen)            return 'period';
+      if (dic === ovDay || dic === ovDay-1)   return 'peak';
+      if (dic === ovDay-2)                    return 'fert-high';
+      if (dic >= ovDay-5 && dic <= ovDay-3)   return 'fert-low';
+      if (dic > ovDay)                        return 'luteal';
+      return 'foliculara';
+    };
+
+    for (let d=1; d<=dim; d++) {
+      const date = new Date(year, month, d);
+      const isToday = (this._calOffset===0 && d===today.getDate());
+      const diff = Math.floor((date - cycleStart) / 86400000);
+      const norm = ((diff % cLen) + cLen) % cLen;
+      const dic = norm + 1;
+      let dayType = hasData ? getDayType(dic) : 'normal';
+      let cls = (dayType==='foliculara'||dayType==='luteal') ? 'normal' : dayType;
+      if (isToday) cls += ' today';
+
+      const inCurrentCycle = hasData && date >= cycleStart && date <= cycleEnd;
+      const badge = inCurrentCycle
+        ? `<span class="cd-badge"><span class="heart">🩷</span><span class="znum">z${dic}</span></span>`
+        : '';
+
+      const dateStr = date.toISOString().split('T')[0];
+      html += `<div class="cd ${cls}" data-date="${dateStr}" data-dic="${dic}" data-type="${dayType}" data-incycle="${inCurrentCycle}" data-clen="${cLen}">
+        <span class="cd-date">${d}</span>${badge}
+      </div>`;
     }
-    if($('calG')) $('calG').innerHTML=html;
+
+    if ($('calG')) {
+      $('calG').innerHTML = html;
+      $('calG').querySelectorAll('.cd:not(.em)').forEach(el => {
+        el.style.cursor = 'pointer';
+        el.addEventListener('click', () => this._openModal(el));
+      });
+    }
+  }
+
+  _openModal(el) {
+    const $ = id => this.shadowRoot.getElementById(id);
+    const dateStr = el.dataset.date;
+    const dic = parseInt(el.dataset.dic);
+    const type = el.dataset.type;
+    const inCycle = el.dataset.incycle === 'true';
+    const cLen = parseInt(el.dataset.clen) || 28;
+
+    const date = new Date(dateStr);
+    const det = DAY_DETAILS[type] || DAY_DETAILS.normal;
+
+    const sticker = $('mSticker');
+    sticker.textContent = det.sticker;
+    sticker.style.background = det.color;
+    sticker.style.borderColor = det.border;
+
+    $('mDate').textContent = fmtDateFull(date);
+    $('mTitle').textContent = inCycle ? `Ziua ${dic} din ciclu` : 'Zi în afara ciclului curent';
+
+    const pill = $('mPill');
+    pill.textContent = `${det.emoji} ${det.label}`;
+    pill.style.background = det.color;
+    pill.style.borderColor = det.border;
+    pill.style.color = 'rgba(255,255,255,0.82)';
+
+    $('mCycleDay').textContent = inCycle ? `z${dic} / ${cLen}` : '—';
+    $('mPhaseIco').textContent = det.phaseIco || '🌿';
+    $('mPhase').textContent = det.label;
+    $('mFertLbl').textContent = det.fertLbl;
+    $('mFertPct').textContent = det.fert + '%';
+    setTimeout(() => { $('mFertBar').style.width = det.fert + '%'; }, 80);
+    $('mHormonal').textContent = det.hormonal;
+    $('mRecIco').textContent = det.recIco || '💡';
+    $('mRec').textContent = det.rec;
+
+    $('modalOverlay').classList.add('open');
+  }
+
+  _closeModal() {
+    const overlay = this.shadowRoot.getElementById('modalOverlay');
+    if (overlay) overlay.classList.remove('open');
   }
 
   _renderInsights(sensors, history) {
