@@ -282,8 +282,9 @@ class CycleTrackerCard extends HTMLElement {
         .idot{width:6px;height:6px;border-radius:50%;background:rgba(255,255,255,0.15);cursor:pointer;transition:all .3s}
         .idot.active{width:18px;border-radius:99px;background:var(--teal,#5BC8B8)}
 
-        .icar-wrap{display:flex;overflow:hidden;border-radius:16px}
-        .islide{min-width:100%;background:rgba(255,255,255,0.025);border:1px solid rgba(255,255,255,0.055);border-radius:16px;padding:14px;box-sizing:border-box;transition:transform .4s cubic-bezier(.4,0,.2,1)}
+        .icar-wrap{position:relative;border-radius:16px}
+        .islide{display:none;background:rgba(255,255,255,0.025);border:1px solid rgba(255,255,255,0.055);border-radius:16px;padding:14px;box-sizing:border-box;width:100%}
+        .islide.active{display:block}
         .isl-title{font-size:11px;font-weight:700;color:rgba(255,255,255,0.70);margin-bottom:3px}
         .isl-sub{font-size:10px;color:rgba(255,255,255,0.30);margin-bottom:10px;line-height:1.5}
         .isl-avg{font-size:13px;font-weight:700;color:var(--teal,#5BC8B8);margin-bottom:12px}
@@ -622,11 +623,10 @@ class CycleTrackerCard extends HTMLElement {
     this.shadowRoot.getElementById('calNext').addEventListener('click', () => { this._calOffset++; this._buildCal(this._lastSensors, this._calPLen||5, this._calOvDay||14, this._calDay||1, this._calHasData||false, this._calCLen||28); });
     this.shadowRoot.getElementById('calTodayBtn').addEventListener('click', () => { this._calOffset=0; this._buildCal(this._lastSensors, this._calPLen||5, this._calOvDay||14, this._calDay||1, this._calHasData||false, this._calCLen||28); });
 
-    // Init slide positions
+    // Init: primul slide activ
     setTimeout(() => {
-      this.shadowRoot.querySelectorAll('.islide').forEach((s, i) => {
-        s.style.transform = `translateX(${i * 100}%)`;
-      });
+      const slides = this.shadowRoot.querySelectorAll('.islide');
+      slides.forEach((s, i) => s.classList.toggle('active', i === 0));
     }, 0);
   }
 
@@ -877,11 +877,14 @@ class CycleTrackerCard extends HTMLElement {
   }
 
   _goSlide(idx) {
-    const slides = this.shadowRoot.querySelectorAll('.islide');
     idx = Math.max(0, Math.min(2, idx));
     this._carIdx = idx;
-    slides.forEach((s, i) => { s.style.transform = `translateX(${(i - idx) * 100}%)`; });
-    this.shadowRoot.querySelectorAll('.idot').forEach((d, i) => d.classList.toggle('active', i === idx));
+    this.shadowRoot.querySelectorAll('.islide').forEach((s, i) => {
+      s.classList.toggle('active', i === idx);
+    });
+    this.shadowRoot.querySelectorAll('.idot').forEach((d, i) => {
+      d.classList.toggle('active', i === idx);
+    });
   }
 
   _renderTrendSlide(sensors, history) {
