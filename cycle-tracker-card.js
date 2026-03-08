@@ -46,54 +46,112 @@ function trendDir(h) {
 const FERT_PCT = { maxim:98, foarte_inalt:80, inalt:55, moderat:25, scazut:5 };
 const FERT_LBL = { maxim:'Maxim', foarte_inalt:'Foarte înalt', inalt:'Înalt', moderat:'Moderat', scazut:'Scăzut' };
 
+// Recomandări rotative per fază — se selectează în funcție de ziua ciclului
+const RECS = {
+  menstruatie: [
+    [{i:'🛁',t:'<strong>Căldură locală:</strong> Pernă termică sau plasture termic pe abdomen — reduce crampele cu până la 40%.'},
+     {i:'🥗',t:'<strong>Fier hemic:</strong> Carne slabă de vită, ficat, spanac + vitamina C pentru absorbție optimă.'},
+     {i:'🧘',t:'<strong>Yoga yin:</strong> Postura Child\'s Pose și Supta Baddha Konasana relaxează musculatura pelvică.'},
+     {i:'💧',t:'<strong>Hidratare:</strong> Cel puțin 2L apă/zi — reduce balonarea și crampele.'}],
+    [{i:'🫖',t:'<strong>Ceai de ghimbir:</strong> 2-3 căni/zi — efect antiinflamator similar ibuprofenului în doze mici.'},
+     {i:'🐟',t:'<strong>Omega-3:</strong> Somon, sardine sau semințe de in — reduc prostaglandinele care cauzează crampe.'},
+     {i:'🚶',t:'<strong>Mers ușor 20-30 min:</strong> Eliberează endorfine care calmează durerea natural.'},
+     {i:'😴',t:'<strong>Somn extra:</strong> Corpul folosește mai multă energie — dormi cu 30-60 min în plus dacă poți.'}],
+    [{i:'🧆',t:'<strong>Linte și leguminoase:</strong> Fier non-hemic + fibre — combate oboseala și susține digestia.'},
+     {i:'🍫',t:'<strong>Ciocolată neagră >70%:</strong> Magneziu natural + efect antioxidant. 2-3 pătrate sunt suficiente.'},
+     {i:'🛀',t:'<strong>Baie caldă cu sare Epsom:</strong> Magneziul transdermic relaxează musculatura.'},
+     {i:'📵',t:'<strong>Limitează cafeina:</strong> Crește cortizolul și poate intensifica crampele și anxietatea.'}],
+    [{i:'🌡️',t:'<strong>Antiinflamatoare naturale:</strong> Curcumă + piper negru în mâncare sau ceai.'},
+     {i:'🥬',t:'<strong>Vitamina K2:</strong> Kale, broccoli, varză de Bruxelles — susțin coagularea normală.'},
+     {i:'🎵',t:'<strong>Muzică și relaxare:</strong> Cortizolul scăzut în această fază face meditația mai eficientă.'},
+     {i:'🩺',t:'<strong>Ciclu dureros?</strong> Dismenoreea severă poate indica endometrioză — discută cu medicul.'}],
+  ],
+  foliculara: [
+    [{i:'🏋️',t:'<strong>Forță maximă:</strong> Estrogenul crește rezistența musculară — ideal pentru antrenamente intense.'},
+     {i:'🥦',t:'<strong>Legume crucifere:</strong> Broccoli, kale, varză — susțin metabolizarea estrogenului prin ficatul.'},
+     {i:'🎯',t:'<strong>Proiecte noi:</strong> Claritate mentală crescută — creierul formează conexiuni noi mai ușor.'},
+     {i:'🌿',t:'<strong>Zinc + seleniu:</strong> Susțin maturarea foliculilor. Surse: semințe de dovleac, nuci braziliene.'}],
+    [{i:'🏃',t:'<strong>Cardio cu intensitate mare:</strong> HIIT, alergare — recuperarea musculară e mai rapidă acum.'},
+     {i:'🥚',t:'<strong>Proteine de calitate:</strong> Ouă, leguminoase, tofu — susțin sinteza hormonală.'},
+     {i:'💡',t:'<strong>Brainstorming:</strong> Creativitatea și memoria de lucru sunt la vârf — planifică, inovează.'},
+     {i:'☀️',t:'<strong>Vitamina D:</strong> Expunere solară 15-20 min sau supliment 1000-2000 UI — esențial pentru folicul.'}],
+    [{i:'🫐',t:'<strong>Antioxidanți:</strong> Afine, căpșune, rodie — protejează foliculii de stresul oxidativ.'},
+     {i:'🧠',t:'<strong>Învățare:</strong> Estrogenul facilitează neuroplasticitatea — ideal pentru cursuri sau abilități noi.'},
+     {i:'💪',t:'<strong>Volum de antrenament:</strong> Poți crește cu 10-15% față de faza luteală — corpul se adaptează mai ușor.'},
+     {i:'🥑',t:'<strong>Grăsimi sănătoase:</strong> Avocado, ulei de măsline — precursori hormonali esențiali.'}],
+    [{i:'🌊',t:'<strong>Hidratare activă:</strong> Adaugă electroliți — sodiu, potasiu, magneziu — pentru antrenamente lungi.'},
+     {i:'🍳',t:'<strong>Colina:</strong> Ouă, ficat — susțin memoria și funcția hepatică în metabolizarea estrogenului.'},
+     {i:'🤝',t:'<strong>Social și networking:</strong> Empatia și comunicarea sunt crescute — momentul ideal pentru întâlniri.'},
+     {i:'🌱',t:'<strong>Probiotice:</strong> Iaurt, kefir, kimchi — microbiomul intestinal influențează nivelul estrogenului.'}],
+  ],
+  ovulatie: [
+    [{i:'⚡',t:'<strong>Performanță de vârf:</strong> Testosteronul + estrogenul cresc forța, viteza și coordonarea.'},
+     {i:'🍓',t:'<strong>Antioxidanți intensivi:</strong> Fructe de pădure, roșii, nuci — protejează ovulul eliberat.'},
+     {i:'💬',t:'<strong>Comunicare maximă:</strong> Empatia și carisma sunt la vârf — prezentări, negocieri, date.'},
+     {i:'💦',t:'<strong>Hidratare crescută:</strong> Temperatura bazală crește ușor — necesarul de apă e mai mare.'}],
+    [{i:'🏊',t:'<strong>Sport de echipă sau dans:</strong> Energia socială e crescută — activitățile de grup sunt mai plăcute.'},
+     {i:'🥩',t:'<strong>Proteine + zinc:</strong> Stridii, carne de vită, semințe de dovleac — susțin calitatea ovulului.'},
+     {i:'🧬',t:'<strong>Fereastră de 24h:</strong> Ovulul e viabil doar 12-24 ore, dar spermatozoizii supraviețuiesc 5 zile.'},
+     {i:'🎤',t:'<strong>Vocea e mai persuasivă:</strong> Studii arată că tonul vocii se modifică subtil în jurul ovulației.'}],
+    [{i:'🌡️',t:'<strong>Temperatura bazală:</strong> Crește cu 0.2-0.5°C după ovulație — semn că a avut loc.'},
+     {i:'🫐',t:'<strong>Vitamina C:</strong> Kiwi, ardei roșu, căpșune — susțin integritatea foliculului și ovulul.'},
+     {i:'🧘',t:'<strong>Mindfulness:</strong> Conștientizează semnalele corpului — mittelschmerz (durere laterală) = ovulație.'},
+     {i:'💃',t:'<strong>Energie socială maximă:</strong> Planifică activitățile care necesită energie și prezență.'}],
+  ],
+  luteala: [
+    [{i:'🍫',t:'<strong>Magneziu:</strong> 300-400mg/zi din ciocolată neagră, nuci, semințe — reduce PMS cu 40%.'},
+     {i:'🌙',t:'<strong>Somn prioritar:</strong> Temperatura bazală ridicată poate perturba somnul — cameră răcoroasă 18-20°C.'},
+     {i:'🧴',t:'<strong>Piele sensibilă:</strong> Progesteronul poate activa sebum — curățare blândă, non-comedogenică.'},
+     {i:'📓',t:'<strong>Jurnal:</strong> Introspecția e naturală acum — scrie, procesează emoțiile, nu le suprima.'}],
+    [{i:'🥗',t:'<strong>Carbohidrați complecși:</strong> Quinoa, orez brun, cartofi dulci — stabilizează glicemia și mood-ul.'},
+     {i:'🚴',t:'<strong>Cardio moderat:</strong> Ciclism, înot, pilates — evită HIIT în ultima săptămână de fază.'},
+     {i:'🌿',t:'<strong>Vitex agnus-castus:</strong> Studii sugerează reducerea simptomelor PMS — consultă medicul.'},
+     {i:'☕',t:'<strong>Limitează cafeina:</strong> Agravează anxietatea și sensibilitatea sânilor în faza luteală târzie.'}],
+    [{i:'🐟',t:'<strong>Omega-3 + B6:</strong> Somon, ton, banane — reduc retenția de apă și iritabilitatea premenstruală.'},
+     {i:'🧠',t:'<strong>Sarcini de detaliu:</strong> Atenția la detalii e crescută — ideal pentru analiză, editare, verificare.'},
+     {i:'🛁',t:'<strong>Self-care activ:</strong> Masaj, saună blândă, uleiuri esențiale de lavandă — scad cortizolul.'},
+     {i:'🥜',t:'<strong>Triptofan:</strong> Nuci, semințe, curcan — precursor al serotoninei, combate iritabilitatea.'}],
+    [{i:'💊',t:'<strong>Vitamina B6 (50mg/zi):</strong> Reduce retenția de apă, sensibilitatea sânilor și schimbările de dispoziție.'},
+     {i:'🏃',t:'<strong>Mers în natură:</strong> 30 min zilnic reduce simptomele PMDD — efectul e dovedit clinic.'},
+     {i:'🍵',t:'<strong>Ceai de zmeură roșie:</strong> Tonifiază musculatura uterină — tradițional recomandat premenstrual.'},
+     {i:'😮‍💨',t:'<strong>Respirație diafragmatică:</strong> 5 min/zi de respirație profundă scade cortizolul cu până la 25%.'}],
+    [{i:'🌊',t:'<strong>Retenție de apă:</strong> Limitează sarea, bea mai multă apă paradoxal — flushează excesul de sodiu.'},
+     {i:'🎨',t:'<strong>Creativitate introvertită:</strong> Energia e orientată spre interior — scris, pictură, muzică.'},
+     {i:'🥦',t:'<strong>DIM (Diindolylmethane):</strong> Din broccoli și varză — ajută ficatul să proceseze excesul de estrogen.'},
+     {i:'🌙',t:'<strong>Melatonina naturală:</strong> Evită ecranele cu 1h înainte de culcare — progesteronul perturbă somnul.'}],
+  ],
+};
+
+// Selectează setul de recs în funcție de ziua ciclului
+function getRecsForDay(phase, cycleDay) {
+  const pool = RECS[phase] || RECS.foliculara;
+  return pool[cycleDay % pool.length];
+}
+
 const PHASES = {
   menstruatie: {
     name:'Menstruație 🌹',
     bg:'linear-gradient(135deg,rgba(232,96,122,0.18),rgba(155,77,110,0.10))',
     br:'rgba(232,96,122,0.26)',
     desc:'Corpul se regenerează. Odihnă, căldură și hidratare sunt esențiale.',
-    recs:[
-      {i:'🛁',t:'<strong>Odihnă & căldură:</strong> Pernă termică, ceai de ghimbir sau mușețel.'},
-      {i:'🥗',t:'<strong>Fier:</strong> Spanac, linte, carne slabă pentru a compensa pierderile.'},
-      {i:'🧘',t:'<strong>Mișcare blândă:</strong> Yoga yin sau stretching. Evită HIIT.'},
-      {i:'💊',t:'<strong>Magneziu + omega-3:</strong> Reduc crampele și inflamația.'},
-    ],
   },
   foliculara: {
     name:'Foliculară 🌱',
     bg:'linear-gradient(135deg,rgba(196,168,224,0.14),rgba(91,200,184,0.07))',
     br:'rgba(196,168,224,0.22)',
     desc:'FSH crește, folicul se maturizează. Estrogenul aduce energie în creștere.',
-    recs:[
-      {i:'🏃',t:'<strong>Energie crescută:</strong> Antrenamente de forță sau cardio.'},
-      {i:'🥦',t:'<strong>Legume crucifere:</strong> Broccoli, varză kale susțin metabolizarea estrogenului.'},
-      {i:'🎯',t:'<strong>Productivitate:</strong> Creierul e mai creativ – ideal pentru proiecte noi.'},
-      {i:'🌿',t:'<strong>Vitamina D + zinc:</strong> Susțin maturarea foliculilor.'},
-    ],
   },
   ovulatie: {
     name:'Fereastră Fertilă ✨',
     bg:'linear-gradient(135deg,rgba(77,200,240,0.14),rgba(107,143,232,0.08))',
     br:'rgba(77,200,240,0.28)',
     desc:'Vârf LH (ziua -1), eliberare ovul (ziua 0). Fertilitate maximă 2 zile.',
-    recs:[
-      {i:'🥚',t:'<strong>Fertilitate maximă:</strong> Ziua de vârf LH + ziua ovulației: ~31-33% șanse/zi.'},
-      {i:'🍓',t:'<strong>Antioxidanți:</strong> Fructe de pădure, roșii, nuci susțin calitatea ovulului.'},
-      {i:'💪',t:'<strong>Performanță fizică maximă:</strong> HIIT, dans, sporturi de echipă.'},
-      {i:'💬',t:'<strong>Social:</strong> Prezentări, negocieri – ești la cel mai bun al tău.'},
-    ],
   },
   luteala: {
     name:'Luteală 🍂',
     bg:'linear-gradient(135deg,rgba(196,98,45,0.18),rgba(155,77,110,0.08))',
     br:'rgba(196,98,45,0.30)',
     desc:'Progesteronul domină această fază — durează fix ~14 zile indiferent de lungimea ciclului.',
-    recs:[
-      {i:'🍫',t:'<strong>Pofte & PMS:</strong> Ciocolată neagră >70%, nuci, magneziu (300mg/zi).'},
-      {i:'🌙',t:'<strong>Somn prioritar:</strong> Temperatura bazală crește ușor după ovulație.'},
-      {i:'🧴',t:'<strong>Piele sensibilă:</strong> Hidratare intensă, evită produse agresive.'},
-      {i:'📓',t:'<strong>Emoții:</strong> Jurnal, meditație — progesteronul poate da iritabilitate.'},
-    ],
   },
 };
 
@@ -726,7 +784,7 @@ class CycleTrackerCard extends HTMLElement {
 
     this._buildCal(sensors, pLen, ovDay, haDay, hasData, cLen);
     $('recL').innerHTML = hasData
-      ? ph.recs.map(r=>`<div class="rc"><div class="ri">${r.i}</div><div class="rt">${r.t}</div></div>`).join('')
+      ? getRecsForDay(haPhase, haDay).map(r=>`<div class="rc"><div class="ri">${r.i}</div><div class="rt">${r.t}</div></div>`).join('')
       : '<div class="rc"><div class="rt" style="color:rgba(255,255,255,0.28)">Adaugă ciclul din panoul ⚙️ de mai jos.</div></div>';
     this._renderInsights(sensors, haHistory);
     this._renderHistory(haHistory);
